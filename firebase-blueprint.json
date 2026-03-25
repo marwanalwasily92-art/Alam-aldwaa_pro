@@ -1,0 +1,69 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user profile with role information.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "description": "The user's email address."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "user"],
+          "description": "The user's role in the system."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name."
+        }
+      },
+      "required": ["email", "role"]
+    },
+    "HistoryItem": {
+      "title": "History Item",
+      "description": "A record of a tool usage by a pharmacist.",
+      "type": "object",
+      "properties": {
+        "user_id": {
+          "type": "string",
+          "description": "The UID of the user who created this record."
+        },
+        "tool_type": {
+          "type": "string",
+          "enum": ["prescription", "skin", "interaction", "consultation"],
+          "description": "The type of tool used."
+        },
+        "input_text": {
+          "type": "string",
+          "description": "The text input provided by the user."
+        },
+        "image_url": {
+          "type": "string",
+          "description": "The URL of the image uploaded (if any)."
+        },
+        "response": {
+          "type": "string",
+          "description": "The AI-generated response."
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the record was created."
+        }
+      },
+      "required": ["user_id", "tool_type", "response", "created_at"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and roles."
+    },
+    "/history/{historyId}": {
+      "schema": "HistoryItem",
+      "description": "Collection of all pharmacist tool usage records."
+    }
+  }
+}

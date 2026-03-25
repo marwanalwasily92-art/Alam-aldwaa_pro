@@ -1,0 +1,5 @@
+{
+  "name": "عالم الدواء - Pharma World",
+  "description": "واجهة ذكية لمحركات Gemini AI مخصصة للصيادلة في اليمن لتحليل الروشتات وفحص البشرة وتداخل الأدوية.",
+  "requestFramePermissions": ["camera"]
+}
