@@ -1,4 +1,9 @@
-export type ToolType = 'prescription' | 'skin' | 'interaction' | 'consultation';
+export type ToolType = 'prescription' | 'skin' | 'interaction' | 'consultation' | 'lab' | 'drug_id' | 'radiology';
+
+export interface Drug {
+  id: string;
+  name: string;
+}
 
 export interface HistoryItem {
   id: string;
@@ -14,4 +19,5 @@ export interface HistoryItem {
 export interface UserConfig {
   apiKey: string;
   model: 'gemini-3-flash-preview' | 'gemini-3.1-pro-preview';
+  incognitoMode?: boolean;
 }

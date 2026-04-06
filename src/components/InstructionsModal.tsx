@@ -1,6 +1,5 @@
-import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, HelpCircle, ExternalLink, CheckCircle2, Info } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { X, HelpCircle, ExternalLink, CheckCircle2, Info, Sparkles, Plus, Copy, Key, Menu } from 'lucide-react';
 
 interface InstructionsModalProps {
   onClose: () => void;
@@ -32,47 +31,104 @@ export default function InstructionsModal({ onClose }: InstructionsModalProps) {
             <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
               <HelpCircle className="w-8 h-8" />
             </div>
-            <h2 className="text-xl font-bold">تعليمات تفعيل المحرك الذكي</h2>
-            <p className="text-blue-100 text-xs">خطوات بسيطة لتشغيل تطبيق عالم الدواء</p>
+            <h2 className="text-xl font-bold">دليل إعداد المساعد الذكي</h2>
+            <p className="text-blue-100 text-xs">لتفعيل التطبيق يرجى اتباع الخطوات التالية</p>
           </div>
         </div>
 
         <div className="p-6 space-y-6 overflow-y-auto">
           <div className="space-y-6">
             <div className="flex gap-4">
-              <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 font-bold">1</div>
-              <div className="space-y-1">
-                <h3 className="font-bold text-slate-800">ما هو مفتاح Gemini API؟</h3>
-                <p className="text-sm text-slate-500 leading-relaxed">
-                  هو رمز سري يربط تطبيقنا بمحركات جوجل للذكاء الاصطناعي. بدونه لا يمكن للتطبيق "رؤية" الروشتات أو "فهم" استفساراتك.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 font-bold">2</div>
-              <div className="space-y-1">
-                <h3 className="font-bold text-slate-800">هل هناك تكلفة مالية؟</h3>
-                <p className="text-sm text-slate-500 leading-relaxed">
-                  **لا يوجد أي تكلفة.** توفر جوجل هذا المفتاح مجاناً (Free Tier) للاستخدام العادي، وهو كافٍ جداً لعملك اليومي في الصيدلية.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 font-bold">3</div>
-              <div className="space-y-1">
-                <h3 className="font-bold text-slate-800">خطوات الحصول على المفتاح:</h3>
-                <div className="space-y-3 text-sm text-slate-600">
-                  <p>1. اضغط على الرابط بالأسفل للدخول لموقع Google AI Studio.</p>
-                  <p>2. سجل دخولك بحساب جوجل (Gmail) الخاص بك.</p>
-                  <p>3. اضغط على زر **"Create API key"** (قد يطلب منك الموافقة على الشروط أولاً).</p>
-                  <p>4. اختر **"Create API key in new project"** للحصول على مفتاح جديد.</p>
-                  <p>5. قم بنسخ الرمز الذي يظهر لك (يبدأ بـ AIza...).</p>
+              <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 font-bold text-xs">1</div>
+              <div className="space-y-4 w-full">
+                <h3 className="font-bold text-slate-800 text-sm">خطوات تفعيل مساعدك الذكي (مجاناً وبأمان تام)</h3>
+                <div className="space-y-5 text-xs text-slate-600">
                   
-                  <div className="bg-amber-50 p-3 rounded-xl border border-amber-100 mt-2">
-                    <p className="text-[10px] text-amber-800 font-bold">💡 ملاحظة حول حد الاستخدام:</p>
-                    <p className="text-[10px] text-amber-700">المفتاح المجاني له حد يومي (مثلاً 15 طلب في الدقيقة و1500 طلب في اليوم). إذا توقف التطبيق، انتظر 24 ساعة ليتجدد الحد تلقائياً.</p>
+                  {/* Step 1 & 2 */}
+                  <div className="leading-relaxed space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-bold text-blue-600">1.</span>
+                      <span>اضغط على الرابط بالأسفل لفتح منصة جوجل (Google AI Studio).</span>
+                    </div>
+                    <div className="flex items-center gap-2 pr-4 border-r-2 border-blue-100">
+                      <span className="font-bold text-blue-600">2.</span>
+                      <span>قم بالموافقة على شروط الاستخدام للمتابعة.</span>
+                    </div>
+                  </div>
+
+                  {/* Step 3 & 4 */}
+                  <div className="leading-relaxed space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-blue-600">3.</span>
+                      <span>افتح القائمة الرئيسية (أعلى يسار الشاشة).</span>
+                      <Menu className="w-3 h-3 text-slate-400" />
+                    </div>
+                    <div className="flex items-center gap-2 pr-4 border-r-2 border-blue-100">
+                      <span className="font-bold text-blue-600">4.</span>
+                      <span>اضغط على خيار</span>
+                      <span className="inline-flex items-center gap-1 bg-[#1e1f20] text-blue-300 px-1.5 py-0.5 rounded text-[10px]">
+                        <Key className="w-2.5 h-2.5" />
+                        Get API key
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Step 5 & 6 */}
+                  <div className="leading-relaxed space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-blue-600">5.</span>
+                      <span>اضغط على الزر الأزرق</span>
+                      <span className="inline-flex items-center gap-1 bg-[#0b57d0] text-white px-2 py-1 rounded-full text-[10px]">
+                        <Plus className="w-2.5 h-2.5" />
+                        Create API key
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 pr-4 border-r-2 border-blue-100">
+                      <span className="font-bold text-blue-600">6.</span>
+                      <span>اختر خيار "Create project" من القائمة.</span>
+                    </div>
+                  </div>
+
+                  {/* Step 7 & 8 */}
+                  <div className="leading-relaxed space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-blue-600">7.</span>
+                      <span>اضغط على زر "Create project" للتأكيد.</span>
+                    </div>
+                    <div className="flex items-center gap-2 pr-4 border-r-2 border-blue-100">
+                      <span className="font-bold text-blue-600">8.</span>
+                      <span>اضغط على "Create key" ثم انسخ الرمز الناتج.</span>
+                      <Copy className="w-3 h-3 text-blue-500" />
+                    </div>
+                  </div>
+
+                  {/* Step 9 */}
+                  <div className="leading-relaxed space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-blue-600">9.</span>
+                      <span>عُد للتطبيق واضغط على أيقونة المفتاح 🔑 أعلى الشاشة، ثم الصق المفتاح واحفظه.</span>
+                    </div>
+                  </div>
+
+                  {/* Instructional Image */}
+                  <div className="rounded-2xl overflow-hidden border-2 border-blue-50 shadow-md mt-4 relative group">
+                    <img 
+                      src="https://picsum.photos/seed/gemini-guide-steps/800/1200" 
+                      alt="Gemini API Key Guide" 
+                      className="w-full h-auto transition-transform duration-500 group-hover:scale-105"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-slate-900/90 to-transparent p-4 text-white">
+                      <p className="text-[11px] font-bold flex items-center gap-2">
+                        <Info className="w-3 h-3 text-blue-400" />
+                        دليل استخراج وتثبيت مفتاح Gemini API
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-amber-50 p-3 rounded-xl border border-amber-100 mt-4">
+                    <p className="text-[10px] text-amber-800 font-bold">💡 خصوصيتك بأمان:</p>
+                    <p className="text-[10px] text-amber-700">هذا المفتاح مشفر ومخصص لاستخدامك الشخصي فقط، ولا يتم مشاركته مع أي جهة.</p>
                   </div>
                   
                   <a 
@@ -81,7 +137,7 @@ export default function InstructionsModal({ onClose }: InstructionsModalProps) {
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-xl font-bold hover:bg-blue-100 transition-all w-full justify-center mt-2"
                   >
-                    <span>فتح موقع الحصول على المفتاح</span>
+                    <span>فتح موقع جوجل (الحصول على المفتاح)</span>
                     <ExternalLink className="w-4 h-4" />
                   </a>
                 </div>
@@ -89,12 +145,23 @@ export default function InstructionsModal({ onClose }: InstructionsModalProps) {
             </div>
 
             <div className="flex gap-4">
-              <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 font-bold">4</div>
-              <div className="space-y-1">
-                <h3 className="font-bold text-slate-800">كيف أفعل التطبيق؟</h3>
+              <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 font-bold">2</div>
+              <div className="space-y-3 w-full">
+                <h3 className="font-bold text-slate-800">كيف أقوم بتفعيل التطبيق؟</h3>
                 <p className="text-sm text-slate-500 leading-relaxed">
-                  بعد نسخ المفتاح، عد للتطبيق واضغط على **أيقونة المفتاح البرتقالية** في أعلى الشاشة، ثم الصق الرمز واضغط حفظ.
+                  عُد إلى تطبيق "عالم الدواء"، واضغط على أيقونة المفتاح 🔑 الموجودة أعلى الشاشة. قم بلصق الرمز الذي نسخته في الخانة المخصصة، ثم اضغط على "حفظ الإعدادات". تهانينا، التطبيق الآن جاهز للعمل!
                 </p>
+                <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl p-4 border border-orange-100/50 flex flex-col items-center gap-2">
+                  <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg shadow-sm border border-slate-100 w-full">
+                    <div className="w-6 h-6 bg-amber-100 rounded-md flex items-center justify-center text-amber-600">
+                      <span className="text-xs">🔑</span>
+                    </div>
+                    <div className="h-4 bg-slate-100 rounded w-full"></div>
+                  </div>
+                  <div className="w-full bg-blue-600 text-white text-[10px] font-bold py-1.5 rounded-lg text-center shadow-sm">
+                    حفظ الإعدادات
+                  </div>
+                </div>
               </div>
             </div>
           </div>

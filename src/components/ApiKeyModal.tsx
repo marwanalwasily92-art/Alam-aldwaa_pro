@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ExternalLink, Key, Info, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { X, ExternalLink, Key, Info, Loader2, AlertCircle, CheckCircle2, Trash2 } from 'lucide-react';
 import { UserConfig } from '../types';
 import { validateApiKey } from '../lib/gemini';
 
@@ -12,11 +12,22 @@ interface ApiKeyModalProps {
 export default function ApiKeyModal({ currentConfig, onSave, onClose }: ApiKeyModalProps) {
   const [apiKey, setApiKey] = useState(currentConfig?.apiKey || '');
   const [model, setModel] = useState<'gemini-3-flash-preview' | 'gemini-3.1-pro-preview'>(currentConfig?.model || 'gemini-3-flash-preview');
+  const [incognitoMode] = useState<boolean>(currentConfig?.incognitoMode || false);
   const [isValidating, setIsValidating] = useState(false);
   const [validationResult, setValidationResult] = useState<{ valid: boolean; message: string } | null>(null);
 
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const handleDeleteKey = () => {
+    onSave({ ...currentConfig!, apiKey: '' });
+    setApiKey('');
+    setValidationResult(null);
+    setShowDeleteConfirm(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (showDeleteConfirm) return;
     const trimmedKey = apiKey.trim();
     if (!trimmedKey) {
       setValidationResult({ valid: false, message: "يرجى إدخال المفتاح أولاً." });
@@ -33,7 +44,7 @@ export default function ApiKeyModal({ currentConfig, onSave, onClose }: ApiKeyMo
       if (result.valid) {
         // Show success for a moment before closing
         setTimeout(() => {
-          onSave({ apiKey: trimmedKey, model });
+          onSave({ apiKey: trimmedKey, model, incognitoMode });
         }, 1000);
       }
     } catch (err) {
@@ -45,35 +56,51 @@ export default function ApiKeyModal({ currentConfig, onSave, onClose }: ApiKeyMo
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" dir="rtl">
-      <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-200">
         <div className="bg-blue-600 p-6 text-white flex justify-between items-center">
           <div className="flex items-center gap-3">
             <Key className="w-6 h-6" />
-            <h2 className="text-xl font-bold">إعدادات Gemini API</h2>
+            <h2 className="text-xl font-bold">إعدادات التطبيق</h2>
           </div>
           <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-lg transition-colors">
             <X className="w-6 h-6" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
           <div className="space-y-2">
             <div className="flex justify-between items-center">
-              <label className="text-sm font-bold text-slate-700 block">مفتاح API الخاص بك</label>
+              <label className="text-sm font-bold text-slate-700 block">مفتاح Gemini API</label>
               {currentConfig?.apiKey && (
-                <button 
-                  type="button" 
-                  onClick={() => {
-                    if (confirm('هل أنت متأكد من حذف المفتاح الحالي؟ سيتم إيقاف التحليل حتى تدخل مفتاحاً جديداً.')) {
-                      onSave({ apiKey: '', model: currentConfig.model });
-                      setApiKey('');
-                      setValidationResult(null);
-                    }
-                  }}
-                  className="text-[10px] text-red-600 font-bold hover:underline"
-                >
-                  حذف المفتاح الحالي
-                </button>
+                <div className="flex items-center gap-2">
+                  {showDeleteConfirm ? (
+                    <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2">
+                      <span className="text-[10px] text-amber-600 font-bold">متأكد؟</span>
+                      <button 
+                        type="button" 
+                        onClick={handleDeleteKey}
+                        className="text-[10px] text-red-600 font-bold hover:underline"
+                      >
+                        نعم، احذف
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={() => setShowDeleteConfirm(false)}
+                        className="text-[10px] text-slate-400 font-bold hover:underline"
+                      >
+                        إلغاء
+                      </button>
+                    </div>
+                  ) : (
+                    <button 
+                      type="button" 
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className="text-[10px] text-red-600 font-bold hover:underline"
+                    >
+                      حذف المفتاح الحالي
+                    </button>
+                  )}
+                </div>
               )}
             </div>
             <div className="relative">
@@ -112,12 +139,6 @@ export default function ApiKeyModal({ currentConfig, onSave, onClose }: ApiKeyMo
                 {validationResult.valid ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
                 <span>{validationResult.message}</span>
               </div>
-            )}
-
-            {apiKey !== currentConfig?.apiKey && !validationResult?.valid && currentConfig?.apiKey && (
-              <p className="text-[10px] text-amber-600 font-bold mt-1">
-                * تنبيه: المفتاح القديم لا يزال هو المستخدم حالياً حتى تضغط على "تحقق وحفظ".
-              </p>
             )}
           </div>
 
@@ -160,16 +181,15 @@ export default function ApiKeyModal({ currentConfig, onSave, onClose }: ApiKeyMo
             </div>
             <ol className="text-xs text-amber-800 space-y-2 list-decimal list-inside pr-2">
               <li>اذهب إلى موقع <a href="https://aistudio.google.com" target="_blank" rel="noopener noreferrer" className="underline font-bold inline-flex items-center gap-1">Google AI Studio <ExternalLink className="w-3 h-3" /></a></li>
-              <li>قم بتسجيل الدخول بحساب جوجل الخاص بك.</li>
-              <li>اضغط على زر <span className="font-bold">"Get API key"</span> في القائمة الجانبية.</li>
+              <li>من القائمة الجانبية، اضغط على زر <span className="font-bold">"Get API key"</span>.</li>
               <li>اضغط على <span className="font-bold">"Create API key in new project"</span>.</li>
-              <li>انسخ المفتاح الناتج والصقه في الحقل أعلاه.</li>
+              <li>انسخ المفتاح الناتج (يبدأ بـ AIza...) والصقه في الحقل أعلاه.</li>
             </ol>
           </div>
 
           <button
             type="submit"
-            disabled={isValidating || validationResult?.valid}
+            disabled={isValidating || (validationResult?.valid && apiKey === currentConfig?.apiKey && model === currentConfig?.model)}
             className={`w-full font-bold py-4 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 ${
               isValidating 
                 ? 'bg-slate-400 cursor-not-allowed text-white' 
@@ -181,7 +201,7 @@ export default function ApiKeyModal({ currentConfig, onSave, onClose }: ApiKeyMo
             {isValidating ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                <span>جاري التحقق من المفتاح...</span>
+                <span>جاري التحقق...</span>
               </>
             ) : validationResult?.valid ? (
               <>
@@ -189,7 +209,7 @@ export default function ApiKeyModal({ currentConfig, onSave, onClose }: ApiKeyMo
                 <span>تم التحقق والحفظ!</span>
               </>
             ) : (
-              <span>تحقق وحفظ الإعدادات</span>
+              <span>حفظ الإعدادات</span>
             )}
           </button>
         </form>
