@@ -4,7 +4,7 @@ import 'react-image-crop/dist/ReactCrop.css';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, Sparkles, Pill, MessageSquare, FileText, Package, Activity, Scan, FileSearch, FlaskConical, ScanFace, Box, ArrowLeftRight, ArrowRight, Key, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { ToolType, Drug } from '../types';
-import { generateGeminiResponse } from '../lib/gemini';
+import { generateGeminiResponse, generateGeminiStream } from '../lib/gemini';
 import { storage, db, getDeviceId, checkAndIncrementQuota, deleteImageFromStorage, getCache, setCache } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { ref, uploadString } from 'firebase/storage';
@@ -497,37 +497,38 @@ export default function ToolView() {
       const maxRetries = 3;
       let success = false;
       let result = '';
-      let currentModel = config?.model || 'gemini-3-flash-preview';
+      let currentModel = config?.model || 'gemini-1.5-flash';
 
       while (retryCount <= maxRetries && !success) {
         try {
           if (retryCount > 0) {
             setLoadingMessage(`الشبكة ضعيفة، جاري محاولة الإرسال... (المحاولة ${retryCount} من ${maxRetries})`);
-            // Wait a bit before retrying (exponential backoff)
             await new Promise(resolve => setTimeout(resolve, retryCount * 2000));
           }
 
-          // 1. Start Gemini Call
-          result = await generateGeminiResponse(
+          // 1. Start Gemini Stream
+          result = await generateGeminiStream(
             config?.apiKey || '',
             currentModel,
             tool,
             finalInput || currentTool.defaultPrompt || 'حلل هذه الصورة',
-            finalImage || undefined
+            finalImage || undefined,
+            (chunk) => {
+              setResponse(prev => (prev || '') + chunk);
+              setLoading(false); // Hide loading as soon as we get first chunk
+            }
           );
           success = true;
         } catch (err: any) {
           const msg = err.message || "";
           
-          // Auto-fallback from Pro to Flash on Quota Error
-          if ((msg.includes("QUOTA_ERROR") || msg.includes("quota") || msg.includes("429")) && currentModel === 'gemini-3.1-pro-preview') {
-            console.warn("Pro quota exceeded, auto-switching to Flash");
-            currentModel = 'gemini-3-flash-preview';
+          if ((msg.includes("QUOTA_ERROR") || msg.includes("quota") || msg.includes("429")) && currentModel === 'gemini-1.5-pro') {
+            currentModel = 'gemini-1.5-flash';
             if (config) {
-              saveConfig({ ...config, model: 'gemini-3-flash-preview' });
+              saveConfig({ ...config, model: 'gemini-1.5-flash' });
             }
             setLoadingMessage("انتهت حصة Pro، جاري المحاولة باستخدام Flash...");
-            continue; // Retry immediately with Flash
+            continue;
           }
 
           const isNetworkError = msg.includes('Failed to fetch') || 

@@ -140,9 +140,9 @@ export async function validateApiKey(apiKey: string) {
     const ai = new GoogleGenAI({ apiKey: trimmedKey });
     
     // Use a very simple prompt to verify the key
-    // We use gemini-3-flash-preview as it's the standard for this app
+    // We use gemini-1.5-flash as it's the standard for this app
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-1.5-flash",
       contents: "hi",
       config: { 
         maxOutputTokens: 5,
@@ -186,6 +186,131 @@ export async function validateApiKey(apiKey: string) {
   }
 }
 
+export async function generateGeminiStream(
+  apiKey: string,
+  modelName: string,
+  toolType: ToolType,
+  prompt: string,
+  imageData?: string,
+  onChunk?: (chunk: string) => void
+): Promise<string> {
+  const finalApiKey = apiKey?.trim() || process.env.GEMINI_API_KEY;
+  
+  if (!finalApiKey) {
+    throw new Error("API_KEY_MISSING: لم يتم العثور على مفتاح تشغيل.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey: finalApiKey });
+  
+  let hiddenPrefix = "";
+  let systemInstruction = CONSULTATION_INSTRUCTION;
+
+  const modelRotation = [
+    'gemini-1.5-flash',
+    'gemini-1.5-pro',
+    'gemini-2.0-flash-exp'
+  ];
+  
+  let currentModelIndex = modelRotation.indexOf(modelName);
+  if (currentModelIndex === -1) currentModelIndex = 0;
+
+  switch (toolType) {
+    case 'prescription':
+      hiddenPrefix = "[SYSTEM: Execute Yemen Prescription Protocol ONLY] ";
+      systemInstruction = PRESCRIPTION_INSTRUCTION;
+      break;
+    case 'skin':
+      hiddenPrefix = "[SYSTEM: Execute Dermatological Analysis Protocol ONLY] ";
+      systemInstruction = SKIN_INSTRUCTION;
+      break;
+    case 'interaction':
+      hiddenPrefix = "[SYSTEM: Execute Drug Interaction Check ONLY] ";
+      systemInstruction = INTERACTION_INSTRUCTION;
+      break;
+    case 'lab':
+      hiddenPrefix = "[SYSTEM: Execute Laboratory Test Analysis Protocol ONLY] ";
+      systemInstruction = LAB_INSTRUCTION;
+      break;
+    case 'radiology':
+      hiddenPrefix = "[SYSTEM: Execute Radiology Analysis & Translation Protocol] ";
+      systemInstruction = RADIOLOGY_INSTRUCTION;
+      break;
+    case 'consultation':
+      hiddenPrefix = "[SYSTEM: Execute Comprehensive Pharmaceutical Consultation] ";
+      systemInstruction = CONSULTATION_INSTRUCTION;
+      break;
+  }
+
+  const fullPrompt = hiddenPrefix + prompt;
+  const activeModel = modelRotation[currentModelIndex];
+
+  let fullText = "";
+
+  try {
+    if (imageData) {
+      const base64Data = imageData.includes(',') ? imageData.split(',')[1] : imageData;
+      const mimeType = imageData.includes(';') ? imageData.split(';')[0].split(':')[1] : "image/jpeg";
+      
+      const result = await ai.models.generateContentStream({
+        model: activeModel,
+        contents: {
+          parts: [
+            { text: fullPrompt },
+            {
+              inlineData: {
+                mimeType: mimeType,
+                data: base64Data
+              }
+            }
+          ]
+        },
+        config: {
+          systemInstruction: systemInstruction
+        }
+      });
+
+      for await (const chunk of (result as any).stream) {
+        const chunkText = chunk.text();
+        fullText += chunkText;
+        if (onChunk) onChunk(chunkText);
+      }
+    } else {
+      const result = await ai.models.generateContentStream({
+        model: activeModel,
+        contents: fullPrompt,
+        config: {
+          systemInstruction: systemInstruction
+        }
+      });
+
+      for await (const chunk of (result as any).stream) {
+        const chunkText = chunk.text();
+        fullText += chunkText;
+        if (onChunk) onChunk(chunkText);
+      }
+    }
+
+    if (!fullText) {
+      throw new Error("لم يتمكن المحرك من توليد رد.");
+    }
+
+    return fullText;
+  } catch (error: any) {
+    console.error("Gemini Stream Error:", error);
+    const msg = error?.message || "";
+    const lowerMsg = msg.toLowerCase();
+    
+    if (lowerMsg.includes("quota") || lowerMsg.includes("429")) {
+      throw new Error("QUOTA_ERROR: انتهت الحصة المجانية لهذا المفتاح.");
+    }
+    if (lowerMsg.includes("api_key_invalid") || lowerMsg.includes("invalid api key")) {
+      throw new Error("API_KEY_ERROR: مفتاح API غير صحيح.");
+    }
+    
+    throw error;
+  }
+}
+
 export async function generateGeminiResponse(
   apiKey: string,
   modelName: string,
@@ -208,9 +333,9 @@ export async function generateGeminiResponse(
 
   // Model Rotation Strategy (Plan A -> B -> C)
   const modelRotation = [
-    'gemini-3-flash-preview',      // Plan A: Fastest & Best Vision for free tier
-    'gemini-3.1-pro-preview',      // Plan B: High Accuracy Fallback
-    'gemini-3.1-flash-lite-preview' // Plan C: Emergency Fallback (Lite)
+    'gemini-1.5-flash',            // Plan A: Stable, Fast & Best Vision for production
+    'gemini-1.5-pro',              // Plan B: High Accuracy Fallback
+    'gemini-2.0-flash-exp'         // Plan C: Next-gen speed fallback
   ];
   
   // If the user specifically requested a model, we put it first

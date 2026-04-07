@@ -11,7 +11,7 @@ interface ApiKeyModalProps {
 
 export default function ApiKeyModal({ currentConfig, onSave, onClose }: ApiKeyModalProps) {
   const [apiKey, setApiKey] = useState(currentConfig?.apiKey || '');
-  const [model, setModel] = useState<'gemini-3-flash-preview' | 'gemini-3.1-pro-preview'>(currentConfig?.model || 'gemini-3-flash-preview');
+  const [model, setModel] = useState<'gemini-1.5-flash' | 'gemini-1.5-pro' | 'gemini-2.0-flash-exp' | 'gemini-3-flash-preview' | 'gemini-3.1-pro-preview'>(currentConfig?.model || 'gemini-1.5-flash');
   const [incognitoMode] = useState<boolean>(currentConfig?.incognitoMode || false);
   const [isValidating, setIsValidating] = useState(false);
   const [validationResult, setValidationResult] = useState<{ valid: boolean; message: string } | null>(null);
@@ -147,28 +147,28 @@ export default function ApiKeyModal({ currentConfig, onSave, onClose }: ApiKeyMo
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => setModel('gemini-3-flash-preview')}
+                onClick={() => setModel('gemini-1.5-flash')}
                 disabled={isValidating}
                 className={`p-3 rounded-xl border-2 transition-all text-center ${
-                  model === 'gemini-3-flash-preview' 
+                  model === 'gemini-1.5-flash' 
                     ? 'border-blue-600 bg-blue-50 text-blue-700 font-bold' 
                     : 'border-slate-200 text-slate-500'
                 }`}
               >
-                Gemini 3 Flash
-                <span className="block text-[10px] font-normal opacity-70">سريع للمهام اليومية</span>
+                Gemini 1.5 Flash
+                <span className="block text-[10px] font-normal opacity-70">الأسرع والأكثر استقراراً</span>
               </button>
               <button
                 type="button"
-                onClick={() => setModel('gemini-3.1-pro-preview')}
+                onClick={() => setModel('gemini-1.5-pro')}
                 disabled={isValidating}
                 className={`p-3 rounded-xl border-2 transition-all text-center ${
-                  model === 'gemini-3.1-pro-preview' 
+                  model === 'gemini-1.5-pro' 
                     ? 'border-blue-600 bg-blue-50 text-blue-700 font-bold' 
                     : 'border-slate-200 text-slate-500'
                 }`}
               >
-                Gemini 3.1 Pro
+                Gemini 1.5 Pro
                 <span className="block text-[10px] font-normal opacity-70">دقة عالية للخطوط الصعبة</span>
               </button>
             </div>
