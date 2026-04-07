@@ -141,7 +141,8 @@ export async function validateApiKey(apiKey: string) {
 
   try {
     const ai = new GoogleGenerativeAI(trimmedKey);
-    const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // Use the latest 3.0 flash model for validation to avoid 404 errors with older keys
+    const model = ai.getGenerativeModel({ model: "gemini-3.0-flash" });
     
     // Use a very simple prompt to verify the key
     const result = await model.generateContent("hi");
@@ -205,6 +206,9 @@ export async function generateGeminiStream(
   let systemInstruction = CONSULTATION_INSTRUCTION;
 
   const modelRotation = [
+    'gemini-3.0-flash',
+    'gemini-3.1-pro-preview',
+    'gemini-3.0-pro',
     'gemini-2.0-flash',
     'gemini-2.0-flash-lite-preview-02-05',
     'gemini-1.5-flash',
@@ -334,12 +338,15 @@ export async function generateGeminiResponse(
 
   // Model Rotation Strategy (Plan A -> B -> C)
   const modelRotation = [
-    'gemini-2.0-flash',            // Plan A: Latest stable fast model
-    'gemini-2.0-flash-lite-preview-02-05', // Plan B: New lite preview
-    'gemini-1.5-flash',            // Plan C: Stable fallback
-    'gemini-1.5-pro',              // Plan D: High Accuracy Fallback
-    'gemini-2.0-pro-exp-02-05',    // Plan E: Latest pro experimental
-    'gemini-2.0-flash-exp'         // Plan F: Older experimental
+    'gemini-3.0-flash',            // Plan A: Latest stable fast model (Gemini 3)
+    'gemini-3.1-pro-preview',      // Plan B: Latest pro preview (Gemini 3.1)
+    'gemini-3.0-pro',              // Plan C: Latest pro model (Gemini 3)
+    'gemini-2.0-flash',            // Plan D: Fast model (Gemini 2)
+    'gemini-2.0-flash-lite-preview-02-05', // Plan E: New lite preview
+    'gemini-1.5-flash',            // Plan F: Stable fallback
+    'gemini-1.5-pro',              // Plan G: High Accuracy Fallback
+    'gemini-2.0-pro-exp-02-05',    // Plan H: Latest pro experimental
+    'gemini-2.0-flash-exp'         // Plan I: Older experimental
   ];
   
   // If the user specifically requested a model, we put it first
