@@ -1,4 +1,4 @@
-import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 import { ToolType } from "../types";
 import { getSystemApiKey } from "./firebase";
 
@@ -117,10 +117,12 @@ const CONSULTATION_INSTRUCTION = `${BASE_INSTRUCTION}
 أنت هنا في قسم "استشارة صيدلانية" وهو القسم الشامل. يمكنك القيام بكل المهام هنا مباشرة: تحليل الروشتات، فحص البشرة، تحليل الفحوصات المخبرية، وفحص تداخل الأدوية.
 يُمنع منعاً باتاً توجيه المستخدم لأي قسم آخر أو استخدام وسم [SUGGEST_TOOL]. أجب على طلب المستخدم بالكامل هنا وبأعلى جودة ممكنة.`;
 
+const BUILT_IN_API_KEY = "AIzaSyCB69JS3gbmLCbiEqGUd1AOHj46O7jEnT0";
+
 export async function validateApiKey(apiKey: string) {
   // If no key is provided, we check if the built-in key exists
   if (!apiKey) {
-    const builtInKey = process.env.GEMINI_API_KEY;
+    const builtInKey = import.meta.env.VITE_GEMINI_API_KEY || BUILT_IN_API_KEY;
     if (builtInKey) {
       return { valid: true, message: "سيتم استخدام المحرك المدمج مجاناً." };
     }
@@ -138,20 +140,16 @@ export async function validateApiKey(apiKey: string) {
   }
 
   try {
-    const ai = new GoogleGenAI({ apiKey: trimmedKey });
+    const ai = new GoogleGenerativeAI(trimmedKey);
+    const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
     
     // Use a very simple prompt to verify the key
-    // We use gemini-1.5-flash as it's the standard for this app
-    const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
-      contents: "hi",
-      config: { 
-        maxOutputTokens: 5,
-      }
-    });
+    const result = await model.generateContent("hi");
+    const response = await result.response;
+    const text = response.text();
     
     // If we get here, the key is valid enough to make a request
-    if (response) {
+    if (text) {
       return { valid: true, message: "المفتاح صالح ويعمل بنجاح" };
     }
     
@@ -195,13 +193,13 @@ export async function generateGeminiStream(
   imageData?: string,
   onChunk?: (chunk: string) => void
 ): Promise<string> {
-  const finalApiKey = apiKey?.trim() || (await getSystemApiKey());
+  const finalApiKey = apiKey?.trim() || (await getSystemApiKey()) || import.meta.env.VITE_GEMINI_API_KEY || BUILT_IN_API_KEY;
   
   if (!finalApiKey) {
-    throw new Error("API_KEY_MISSING: لم يتم العثور على مفتاح تشغيل. يرجى التأكد من إعدادات النظام في Firestore.");
+    throw new Error("API_KEY_MISSING: لم يتم العثور على مفتاح تشغيل. يرجى التأكد من إعدادات النظام.");
   }
 
-  const ai = new GoogleGenAI({ apiKey: finalApiKey });
+  const ai = new GoogleGenerativeAI(finalApiKey);
   
   let hiddenPrefix = "";
   let systemInstruction = CONSULTATION_INSTRUCTION;
@@ -251,43 +249,34 @@ export async function generateGeminiStream(
     let fullText = "";
 
     try {
+      const model = ai.getGenerativeModel({ 
+        model: activeModel,
+        systemInstruction: systemInstruction
+      });
+
       if (imageData) {
         const base64Data = imageData.includes(',') ? imageData.split(',')[1] : imageData;
         const mimeType = imageData.includes(';') ? imageData.split(';')[0].split(':')[1] : "image/jpeg";
         
-        const result = await ai.models.generateContentStream({
-          model: activeModel,
-          contents: {
-            parts: [
-              { text: fullPrompt },
-              {
-                inlineData: {
-                  mimeType: mimeType,
-                  data: base64Data
-                }
-              }
-            ]
-          },
-          config: {
-            systemInstruction: systemInstruction
+        const result = await model.generateContentStream([
+          fullPrompt,
+          {
+            inlineData: {
+              mimeType: mimeType,
+              data: base64Data
+            }
           }
-        });
+        ]);
 
-        for await (const chunk of (result as any).stream) {
+        for await (const chunk of result.stream) {
           const chunkText = chunk.text();
           fullText += chunkText;
           if (onChunk) onChunk(chunkText);
         }
       } else {
-        const result = await ai.models.generateContentStream({
-          model: activeModel,
-          contents: fullPrompt,
-          config: {
-            systemInstruction: systemInstruction
-          }
-        });
+        const result = await model.generateContentStream(fullPrompt);
 
-        for await (const chunk of (result as any).stream) {
+        for await (const chunk of result.stream) {
           const chunkText = chunk.text();
           fullText += chunkText;
           if (onChunk) onChunk(chunkText);
@@ -329,13 +318,13 @@ export async function generateGeminiResponse(
   maxRetries = 3
 ): Promise<string> {
   // Use user key if provided, otherwise fallback to built-in key
-  const finalApiKey = apiKey?.trim() || (await getSystemApiKey());
+  const finalApiKey = apiKey?.trim() || (await getSystemApiKey()) || import.meta.env.VITE_GEMINI_API_KEY || BUILT_IN_API_KEY;
   
   if (!finalApiKey) {
-    throw new Error("API_KEY_MISSING: لم يتم العثور على مفتاح تشغيل. يرجى التأكد من إعدادات النظام في Firestore.");
+    throw new Error("API_KEY_MISSING: لم يتم العثور على مفتاح تشغيل. يرجى التأكد من إعدادات النظام.");
   }
 
-  const ai = new GoogleGenAI({ apiKey: finalApiKey });
+  const ai = new GoogleGenerativeAI(finalApiKey);
   
   let hiddenPrefix = "";
   let systemInstruction = CONSULTATION_INSTRUCTION;
@@ -380,46 +369,42 @@ export async function generateGeminiResponse(
 
   const fullPrompt = hiddenPrefix + prompt;
 
-  const makeRequest = async (model: string) => {
+  const makeRequest = async (modelName: string) => {
+    const model = ai.getGenerativeModel({ 
+      model: modelName,
+      systemInstruction: systemInstruction
+    });
+
     if (imageData) {
       const base64Data = imageData.includes(',') ? imageData.split(',')[1] : imageData;
       const mimeType = imageData.includes(';') ? imageData.split(';')[0].split(':')[1] : "image/jpeg";
       
-      const response = await ai.models.generateContent({
-        model: model,
-        contents: {
-          parts: [
-            { text: fullPrompt },
-            {
-              inlineData: {
-                mimeType: mimeType,
-                data: base64Data
-              }
-            }
-          ]
-        },
-        config: {
-          systemInstruction: systemInstruction
+      const result = await model.generateContent([
+        fullPrompt,
+        {
+          inlineData: {
+            mimeType: mimeType,
+            data: base64Data
+          }
         }
-      });
+      ]);
       
-      if (!response.text) {
+      const response = await result.response;
+      const text = response.text();
+      
+      if (!text) {
         throw new Error("لم يتمكن المحرك من توليد رد. قد تكون الصورة غير مدعومة أو تم حظرها.");
       }
-      return response.text;
+      return text;
     } else {
-      const response = await ai.models.generateContent({
-        model: model,
-        contents: fullPrompt,
-        config: {
-          systemInstruction: systemInstruction
-        }
-      });
+      const result = await model.generateContent(fullPrompt);
+      const response = await result.response;
+      const text = response.text();
       
-      if (!response.text) {
+      if (!text) {
         throw new Error("لم يتمكن المحرك من توليد رد.");
       }
-      return response.text;
+      return text;
     }
   };
 
