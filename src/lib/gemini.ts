@@ -194,12 +194,7 @@ export async function generateGeminiStream(
   imageData?: string,
   onChunk?: (chunk: string) => void
 ): Promise<string> {
-  const finalApiKey = apiKey?.trim() || process.env.GEMINI_API_KEY;
-  
-  if (!finalApiKey) {
-    throw new Error("API_KEY_MISSING: لم يتم العثور على مفتاح تشغيل.");
-  }
-
+  const finalApiKey = apiKey?.trim() || "AIzaSyCB69JS3gbmLCbiEqGUd1AOHj46O7jEnT0";
   const ai = new GoogleGenAI({ apiKey: finalApiKey });
   
   let hiddenPrefix = "";
@@ -320,12 +315,7 @@ export async function generateGeminiResponse(
   maxRetries = 3
 ): Promise<string> {
   // Use user key if provided, otherwise fallback to built-in key
-  const finalApiKey = apiKey?.trim() || process.env.GEMINI_API_KEY;
-  
-  if (!finalApiKey) {
-    throw new Error("API_KEY_MISSING: لم يتم العثور على مفتاح تشغيل. يرجى إضافة مفتاحك الخاص أو التأكد من إعدادات النظام.");
-  }
-
+  const finalApiKey = apiKey?.trim() || "AIzaSyCB69JS3gbmLCbiEqGUd1AOHj46O7jEnT0";
   const ai = new GoogleGenAI({ apiKey: finalApiKey });
   
   let hiddenPrefix = "";

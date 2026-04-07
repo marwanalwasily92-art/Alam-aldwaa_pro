@@ -50,6 +50,39 @@ export function getDeviceId() {
 
 export const ADMIN_EMAILS = ["marwanalwasily96@gmail.com", "kinging71317@gmail.com", "salahwasel129@gmail.com"];
 
+export async function getSystemApiKey(): Promise<string | null> {
+  try {
+    const configRef = doc(db, 'system_config', 'gemini_api');
+    const configSnap = await getDoc(configRef);
+    if (configSnap.exists()) {
+      return configSnap.data().api_key || null;
+    }
+    return null;
+  } catch (error) {
+    console.error("Error fetching system API key:", error);
+    return null;
+  }
+}
+
+export async function setSystemApiKey(apiKey: string): Promise<void> {
+  const userEmail = auth.currentUser?.email;
+  if (!userEmail || !ADMIN_EMAILS.includes(userEmail)) {
+    throw new Error("عذراً، هذه الصلاحية للمشرفين فقط.");
+  }
+  
+  try {
+    const configRef = doc(db, 'system_config', 'gemini_api');
+    await setDoc(configRef, {
+      api_key: apiKey,
+      updated_at: serverTimestamp(),
+      updated_by: userEmail
+    });
+  } catch (error) {
+    console.error("Error setting system API key:", error);
+    throw error;
+  }
+}
+
 // Helper to create a simple hash for strings/images
 export async function createHash(input: string): Promise<string> {
   const msgUint8 = new TextEncoder().encode(input);
