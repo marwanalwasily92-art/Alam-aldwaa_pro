@@ -1,5 +1,6 @@
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { ToolType } from "../types";
+import { getSystemApiKey } from "./firebase";
 
 const BASE_INSTRUCTION = `أنت المحرك الذكي لتطبيق (عالم الدواء). أنت خبير صيدلاني يمني رقمي. 
 
@@ -194,7 +195,12 @@ export async function generateGeminiStream(
   imageData?: string,
   onChunk?: (chunk: string) => void
 ): Promise<string> {
-  const finalApiKey = apiKey?.trim() || "AIzaSyCB69JS3gbmLCbiEqGUd1AOHj46O7jEnT0";
+  const finalApiKey = apiKey?.trim() || (await getSystemApiKey());
+  
+  if (!finalApiKey) {
+    throw new Error("API_KEY_MISSING: لم يتم العثور على مفتاح تشغيل. يرجى التأكد من إعدادات النظام في Firestore.");
+  }
+
   const ai = new GoogleGenAI({ apiKey: finalApiKey });
   
   let hiddenPrefix = "";
@@ -237,73 +243,81 @@ export async function generateGeminiStream(
   }
 
   const fullPrompt = hiddenPrefix + prompt;
-  const activeModel = modelRotation[currentModelIndex];
+  
+  // Try models in rotation if one is busy/crowded
+  for (let i = 0; i < modelRotation.length; i++) {
+    const attemptIndex = (currentModelIndex + i) % modelRotation.length;
+    const activeModel = modelRotation[attemptIndex];
+    let fullText = "";
 
-  let fullText = "";
-
-  try {
-    if (imageData) {
-      const base64Data = imageData.includes(',') ? imageData.split(',')[1] : imageData;
-      const mimeType = imageData.includes(';') ? imageData.split(';')[0].split(':')[1] : "image/jpeg";
-      
-      const result = await ai.models.generateContentStream({
-        model: activeModel,
-        contents: {
-          parts: [
-            { text: fullPrompt },
-            {
-              inlineData: {
-                mimeType: mimeType,
-                data: base64Data
+    try {
+      if (imageData) {
+        const base64Data = imageData.includes(',') ? imageData.split(',')[1] : imageData;
+        const mimeType = imageData.includes(';') ? imageData.split(';')[0].split(':')[1] : "image/jpeg";
+        
+        const result = await ai.models.generateContentStream({
+          model: activeModel,
+          contents: {
+            parts: [
+              { text: fullPrompt },
+              {
+                inlineData: {
+                  mimeType: mimeType,
+                  data: base64Data
+                }
               }
-            }
-          ]
-        },
-        config: {
-          systemInstruction: systemInstruction
+            ]
+          },
+          config: {
+            systemInstruction: systemInstruction
+          }
+        });
+
+        for await (const chunk of (result as any).stream) {
+          const chunkText = chunk.text();
+          fullText += chunkText;
+          if (onChunk) onChunk(chunkText);
         }
-      });
+      } else {
+        const result = await ai.models.generateContentStream({
+          model: activeModel,
+          contents: fullPrompt,
+          config: {
+            systemInstruction: systemInstruction
+          }
+        });
 
-      for await (const chunk of (result as any).stream) {
-        const chunkText = chunk.text();
-        fullText += chunkText;
-        if (onChunk) onChunk(chunkText);
-      }
-    } else {
-      const result = await ai.models.generateContentStream({
-        model: activeModel,
-        contents: fullPrompt,
-        config: {
-          systemInstruction: systemInstruction
+        for await (const chunk of (result as any).stream) {
+          const chunkText = chunk.text();
+          fullText += chunkText;
+          if (onChunk) onChunk(chunkText);
         }
-      });
-
-      for await (const chunk of (result as any).stream) {
-        const chunkText = chunk.text();
-        fullText += chunkText;
-        if (onChunk) onChunk(chunkText);
       }
-    }
 
-    if (!fullText) {
-      throw new Error("لم يتمكن المحرك من توليد رد.");
+      if (fullText) return fullText;
+    } catch (error: any) {
+      console.error(`Gemini Attempt with ${activeModel} failed:`, error);
+      const msg = error?.message || "";
+      const lowerMsg = msg.toLowerCase();
+      
+      // If it's a quota/rate limit error and we have more models to try, continue
+      if ((lowerMsg.includes("quota") || lowerMsg.includes("429") || lowerMsg.includes("busy")) && i < modelRotation.length - 1) {
+        console.warn(`Model ${activeModel} is busy, rotating to next model...`);
+        continue;
+      }
+      
+      if (lowerMsg.includes("quota") || lowerMsg.includes("429")) {
+        throw new Error("QUOTA_ERROR: انتهت الحصة المجانية لهذا المفتاح أو أن الخادم مزدحم حالياً. يرجى المحاولة بعد دقيقة.");
+      }
+      if (lowerMsg.includes("api_key_invalid") || lowerMsg.includes("invalid api key")) {
+        throw new Error("API_KEY_ERROR: مفتاح API غير صحيح.");
+      }
+      
+      throw error;
     }
-
-    return fullText;
-  } catch (error: any) {
-    console.error("Gemini Stream Error:", error);
-    const msg = error?.message || "";
-    const lowerMsg = msg.toLowerCase();
-    
-    if (lowerMsg.includes("quota") || lowerMsg.includes("429")) {
-      throw new Error("QUOTA_ERROR: انتهت الحصة المجانية لهذا المفتاح.");
-    }
-    if (lowerMsg.includes("api_key_invalid") || lowerMsg.includes("invalid api key")) {
-      throw new Error("API_KEY_ERROR: مفتاح API غير صحيح.");
-    }
-    
-    throw error;
   }
+  
+  throw new Error("فشلت جميع المحاولات لتوليد رد. يرجى المحاولة لاحقاً.");
 }
 
 export async function generateGeminiResponse(
@@ -315,7 +329,12 @@ export async function generateGeminiResponse(
   maxRetries = 3
 ): Promise<string> {
   // Use user key if provided, otherwise fallback to built-in key
-  const finalApiKey = apiKey?.trim() || "AIzaSyCB69JS3gbmLCbiEqGUd1AOHj46O7jEnT0";
+  const finalApiKey = apiKey?.trim() || (await getSystemApiKey());
+  
+  if (!finalApiKey) {
+    throw new Error("API_KEY_MISSING: لم يتم العثور على مفتاح تشغيل. يرجى التأكد من إعدادات النظام في Firestore.");
+  }
+
   const ai = new GoogleGenAI({ apiKey: finalApiKey });
   
   let hiddenPrefix = "";
@@ -455,6 +474,9 @@ export async function generateGeminiResponse(
       
       // If it's the last attempt, throw the error
       if (attempt >= maxRetries) {
+        if (lowerMsg.includes("quota") || lowerMsg.includes("429") || status === 429) {
+          throw new Error("QUOTA_ERROR: انتهت الحصة المجانية لهذا المفتاح أو أن الخادم مزدحم حالياً (مزدحم). يرجى المحاولة بعد دقيقة.");
+        }
         if (msg === 'NETWORK_TIMEOUT' || lowerMsg.includes('fetch') || lowerMsg.includes('network')) {
           throw new Error("يبدو أن اتصال الإنترنت لديك ضعيف أو غير مستقر. يرجى المحاولة مرة أخرى.");
         }

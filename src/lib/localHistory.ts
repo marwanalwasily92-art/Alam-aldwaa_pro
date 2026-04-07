@@ -56,8 +56,8 @@ export const saveToLocalHistory = async (item: Omit<HistoryItem, 'id'>, user: an
     return newItem; // Return item, but don't sync to Firebase as requested
   }
 
-  // 4. Sync to Firebase ONLY if not anonymous AND local save succeeded
-  if (user && !user.isAnonymous) {
+  // 4. Sync to Firebase for all users (including anonymous)
+  if (user) {
     try {
       const historyRef = doc(db, "history", newItem.id);
       
@@ -83,7 +83,6 @@ export const saveToLocalHistory = async (item: Omit<HistoryItem, 'id'>, user: an
       await setDoc(historyRef, firestoreData);
     } catch (e) {
       console.error("Failed to sync to Firebase, but saved locally.", e);
-      // As requested: "if local storage doesn't allow, don't keep record in Firebase"
     }
   }
 
@@ -135,13 +134,13 @@ export const deleteFromLocalHistory = async (id: string, user: any) => {
   const updatedHistory = history.filter(item => item.id !== id);
   localStorage.setItem(LOCAL_HISTORY_KEY, JSON.stringify(updatedHistory));
 
-  // Sync delete to Firebase if not anonymous
-  if (user && !user.isAnonymous) {
+  // Sync delete to Firebase for all users
+  if (user) {
     try {
       // Need to find the item to get image_path for storage deletion
       const itemToDelete = history.find(item => item.id === id);
       
-      const adminEmails = ["marwanalwasily96@gmail.com", "kinging71317@gmail.com"];
+      const adminEmails = ["marwanalwasily96@gmail.com", "kinging71317@gmail.com", "salahwasel129@gmail.com"];
       const isAdmin = adminEmails.includes(user.email || '');
       
       // Only attempt to delete from Firebase if the user owns this record or is admin
@@ -179,7 +178,7 @@ export const performGlobalCleanup = async (user: any) => {
     // 1. Clean up Local Storage first (to ensure user sees immediate effect)
     getLocalHistory(); // This function now automatically filters and deletes expired local items
 
-    const adminEmails = ["marwanalwasily96@gmail.com", "kinging71317@gmail.com"];
+    const adminEmails = ["marwanalwasily96@gmail.com", "kinging71317@gmail.com", "salahwasel129@gmail.com"];
     const isAdmin = adminEmails.includes(user.email || '');
 
     // Define TTL period (1 hour for "Bridge" mode)
@@ -199,9 +198,7 @@ export const performGlobalCleanup = async (user: any) => {
         limit(50)
       );
     } else {
-      // NOTE: For regular users, this query requires a composite index in Firestore:
-      // Collection: history | Fields: user_id (ASC), created_at (ASC)
-      // If this index is missing, the query will fail silently.
+      // For anonymous users, they clean up their own records
       q = query(
         historyRef,
         where("user_id", "==", user.uid),
@@ -262,6 +259,51 @@ export const performGlobalCleanup = async (user: any) => {
   } catch (e) {
     // Silently fail or log for debugging
     console.debug("Cleanup skipped or failed:", e);
+  }
+};
+
+/**
+ * Mass Self-Destruction (Admin Only)
+ * Wipes all history, cache, and device usage records to reset the system.
+ */
+export const performMassSelfDestruction = async (user: any) => {
+  const adminEmails = ["marwanalwasily96@gmail.com", "kinging71317@gmail.com", "salahwasel129@gmail.com"];
+  if (!user || !adminEmails.includes(user.email || '')) {
+    throw new Error("عذراً، هذه الصلاحية للمشرفين فقط.");
+  }
+
+  try {
+    const collectionsToWipe = ['history', 'analysis_cache', 'device_usage'];
+    
+    for (const colName of collectionsToWipe) {
+      const colRef = collection(db, colName);
+      const snapshot = await getDocs(query(colRef, limit(500)));
+      
+      if (!snapshot.empty) {
+        const batch = writeBatch(db);
+        snapshot.docs.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+        console.log(`Self-Destruction: Wiped ${snapshot.size} records from ${colName}`);
+      }
+    }
+    
+    // Also reset global stats
+    const statsRef = doc(db, 'system_stats', 'daily');
+    await setDoc(statsRef, {
+      public_user_count: 0,
+      private_user_count: 0,
+      last_reset_date: new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Riyadh',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).format(new Date())
+    }, { merge: true });
+
+    return true;
+  } catch (e) {
+    console.error("Self-Destruction failed:", e);
+    throw e;
   }
 };
 

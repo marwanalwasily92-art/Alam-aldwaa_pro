@@ -9,7 +9,7 @@ import AdminDashboard from './components/AdminDashboard';
 import ApiKeyModal from './components/ApiKeyModal';
 import InstructionsModal from './components/InstructionsModal';
 import MedicalDisclaimerModal from './components/MedicalDisclaimerModal';
-import { LogOut, LogIn, History, LayoutDashboard, Key, ShieldCheck, HelpCircle, WifiOff, UserCircle, AlertTriangle, Coins, Clock, Info, ChevronLeft } from 'lucide-react';
+import { History, LayoutDashboard, Key, ShieldCheck, HelpCircle, WifiOff, UserCircle, AlertTriangle, Coins, Clock, Info, ChevronLeft } from 'lucide-react';
 import { cn } from './lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useNetworkStatus } from './hooks/useNetworkStatus';
@@ -315,11 +315,18 @@ function AppContent() {
     setShowDisclaimer(false);
   };
 
-  const isAdmin = false; // Admin features disabled or moved to hidden logic
+  const isAdmin = !!(user && ADMIN_EMAILS.includes(user.email || ''));
 
   React.useEffect(() => {
     if (user) {
       performGlobalCleanup(user);
+      
+      // Set up periodic cleanup every 15 minutes
+      const cleanupInterval = setInterval(() => {
+        performGlobalCleanup(user);
+      }, 15 * 60 * 1000);
+      
+      return () => clearInterval(cleanupInterval);
     }
   }, [user]);
 
@@ -474,7 +481,9 @@ function AppContent() {
                   <UserCircle className="w-16 h-16 text-blue-100" />
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-1">مستخدم زائر</h3>
-                <p className="text-slate-500 text-xs mb-8 text-center px-4">بياناتك محفوظة محلياً على هذا الجهاز لضمان خصوصيتك</p>
+                <p className="text-slate-500 text-xs mb-8 text-center px-4">
+                  بياناتك محفوظة محلياً على هذا الجهاز لمدة ساعة واحدة فقط لضمان خصوصيتك.
+                </p>
 
                 {/* Account Stats & Tools */}
                 <div className="w-full space-y-3 mb-8">

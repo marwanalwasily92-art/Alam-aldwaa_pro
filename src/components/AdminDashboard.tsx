@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../lib/firebase';
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
-import { ShieldCheck, Users, Activity, Clock, AlertCircle } from 'lucide-react';
+import { ShieldCheck, Users, Activity, Clock, AlertCircle, Trash2, Zap } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { performMassSelfDestruction } from '../lib/localHistory';
+import { cn } from '../lib/utils';
 
 interface SystemStats {
   user_count: number;
@@ -17,8 +19,28 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const adminEmails = ["marwanalwasily96@gmail.com", "kinging71317@gmail.com"];
+  const adminEmails = ["marwanalwasily96@gmail.com", "kinging71317@gmail.com", "salahwasel129@gmail.com"];
   const isAdmin = user && adminEmails.includes(user.email || '');
+
+  const [isDestroying, setIsDestroying] = useState(false);
+  const [destroySuccess, setDestroySuccess] = useState(false);
+
+  const handleSelfDestruct = async () => {
+    if (!window.confirm("⚠️ تحذير: سيتم مسح كافة سجلات الاستخدام، الذاكرة المؤقتة، وإحصائيات النظام بالكامل. هل أنت متأكد؟")) {
+      return;
+    }
+
+    setIsDestroying(true);
+    try {
+      await performMassSelfDestruction(user);
+      setDestroySuccess(true);
+      setTimeout(() => setDestroySuccess(false), 5000);
+    } catch (err: any) {
+      setError(err.message || "فشل التدمير الذاتي.");
+    } finally {
+      setIsDestroying(false);
+    }
+  };
 
   useEffect(() => {
     if (!isAdmin) {
@@ -144,6 +166,44 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* Self-Destruction Section */}
+      <div className="bg-red-50 border border-red-100 p-6 rounded-3xl space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-red-100 rounded-xl">
+            <Zap className="w-5 h-5 text-red-600" />
+          </div>
+          <h3 className="text-lg font-bold text-red-900">منطقة الخطر: التدمير الذاتي الجماعي</h3>
+        </div>
+        <p className="text-xs text-red-800 leading-relaxed">
+          هذا الخيار يقوم بمسح كافة البيانات المؤقتة (السجلات، الكاش، عدادات الأجهزة) لتصفير النظام بالكامل. 
+          يُستخدم هذا الإجراء لضمان بقاء المشروع ضمن "الخطة المجانية" للأبد عبر منع تراكم البيانات الضخمة.
+        </p>
+        
+        <button
+          onClick={handleSelfDestruct}
+          disabled={isDestroying}
+          className={cn(
+            "w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg",
+            isDestroying ? "bg-slate-400 cursor-not-allowed" : "bg-red-600 hover:bg-red-700 text-white active:scale-95"
+          )}
+        >
+          {isDestroying ? (
+            <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+          ) : (
+            <>
+              <Trash2 className="w-5 h-5" />
+              تفعيل التدمير الذاتي الجماعي 🧨
+            </>
+          )}
+        </button>
+
+        {destroySuccess && (
+          <div className="bg-green-100 text-green-800 p-3 rounded-xl text-center text-xs font-bold animate-in slide-in-from-bottom duration-300">
+            ✅ تمت عملية التدمير الذاتي بنجاح! تم تصفير النظام.
+          </div>
+        )}
+      </div>
 
       <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl space-y-2">
         <p className="text-xs font-bold text-amber-900 flex items-center gap-2">

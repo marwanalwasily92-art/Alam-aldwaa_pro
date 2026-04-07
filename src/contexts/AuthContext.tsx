@@ -51,14 +51,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const userDoc = doc(db, 'users', user.uid);
           const snap = await getDoc(userDoc);
+          
+          const today = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Riyadh',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          }).format(new Date());
+
           if (!snap.exists()) {
-            const today = new Intl.DateTimeFormat('en-CA', {
-              timeZone: 'Asia/Riyadh',
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit'
-            }).format(new Date());
-            
             await setDoc(userDoc, {
               displayName: 'مستخدم زائر',
               role: 'user',
@@ -67,6 +68,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               last_reset_date: today,
               created_at: serverTimestamp()
             });
+          } else {
+            // Update existing user info if needed
+            await setDoc(userDoc, {
+              isAnonymous: true,
+              last_active: serverTimestamp()
+            }, { merge: true });
           }
         } catch (err) {
           console.error("Error syncing user:", err);

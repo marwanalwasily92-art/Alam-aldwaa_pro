@@ -19,7 +19,7 @@ service cloud.firestore {
         (
           (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
-          (request.auth.token.email == "marwanalwasily96@gmail.com" || request.auth.token.email == "kinging71317@gmail.com")
+          (request.auth.token.email in ["marwanalwasily96@gmail.com", "kinging71317@gmail.com", "salahwasel129@gmail.com"])
         );
     }
 
@@ -49,7 +49,8 @@ service cloud.firestore {
     }
 
     function isValidSystemStats(data) {
-      return data.user_count is int && data.user_count >= 0 &&
+      return (!('public_user_count' in data) || data.public_user_count is int) &&
+             (!('private_user_count' in data) || data.private_user_count is int) &&
              isValidDateString(data.last_reset_date);
     }
 
@@ -72,7 +73,7 @@ service cloud.firestore {
       allow read: if isOwner(userId) || isAdmin();
       allow create: if isOwner(userId) && isValidUser(request.resource.data) && 
                     (request.resource.data.role == 'user' || 
-                     (request.auth.token.email in ["marwanalwasily96@gmail.com", "kinging71317@gmail.com"] && request.resource.data.role == 'admin'));
+                     (request.auth.token.email in ["marwanalwasily96@gmail.com", "kinging71317@gmail.com", "salahwasel129@gmail.com"] && request.resource.data.role == 'admin'));
       allow update: if (isOwner(userId) && isValidUser(request.resource.data) && 
                        (request.resource.data.role == resource.data.role || (!('role' in resource.data) && request.resource.data.role == 'user') || isAdmin())) || isAdmin();
       allow delete: if isAdmin();

@@ -57,9 +57,13 @@
       "description": "Global system statistics for dynamic quotas",
       "type": "object",
       "properties": {
-        "user_count": {
+        "public_user_count": {
           "type": "integer",
-          "description": "Total number of active users today"
+          "description": "Total number of active public users today"
+        },
+        "private_user_count": {
+          "type": "integer",
+          "description": "Total number of active private users today"
         },
         "last_reset_date": {
           "type": "string",
@@ -67,7 +71,32 @@
           "description": "The date of the last global reset (YYYY-MM-DD)"
         }
       },
-      "required": ["user_count", "last_reset_date"]
+      "required": ["public_user_count", "private_user_count", "last_reset_date"]
+    },
+    "DeviceUsage": {
+      "title": "DeviceUsage",
+      "description": "Usage tracking per device to prevent quota abuse",
+      "type": "object",
+      "properties": {
+        "usage_count": {
+          "type": "integer",
+          "description": "Number of requests made today by this device"
+        },
+        "last_reset_date": {
+          "type": "string",
+          "format": "date",
+          "description": "The date of the last reset (YYYY-MM-DD)"
+        },
+        "last_user_id": {
+          "type": "string",
+          "description": "The UID of the last user on this device"
+        },
+        "is_private": {
+          "type": "boolean",
+          "description": "Whether this device is using a private key"
+        }
+      },
+      "required": ["usage_count", "last_reset_date"]
     },
     "History": {
       "title": "History",
@@ -126,6 +155,27 @@
         }
       },
       "required": ["tool_type", "prompt_hash", "response", "created_at"]
+    },
+    "SystemConfig": {
+      "title": "SystemConfig",
+      "description": "Global system configuration and API keys",
+      "type": "object",
+      "properties": {
+        "api_key": {
+          "type": "string",
+          "description": "The Gemini API key used by the system"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last time the key was updated"
+        },
+        "updated_by": {
+          "type": "string",
+          "description": "Email of the admin who updated the key"
+        }
+      },
+      "required": ["api_key"]
     }
   },
   "firestore": {
@@ -137,6 +187,10 @@
       "schema": "SystemStats",
       "description": "Global daily usage statistics"
     },
+    "/device_usage/{deviceId}": {
+      "schema": "DeviceUsage",
+      "description": "Device-based quota tracking"
+    },
     "/history/{historyId}": {
       "schema": "History",
       "description": "Temporary history records"
@@ -144,6 +198,10 @@
     "/analysis_cache/{cacheId}": {
       "schema": "AnalysisCache",
       "description": "Cached AI responses"
+    },
+    "/system_config/gemini_api": {
+      "schema": "SystemConfig",
+      "description": "System-wide Gemini API key storage"
     }
   }
 }
