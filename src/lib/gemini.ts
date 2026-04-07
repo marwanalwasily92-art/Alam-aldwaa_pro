@@ -205,8 +205,11 @@ export async function generateGeminiStream(
   let systemInstruction = CONSULTATION_INSTRUCTION;
 
   const modelRotation = [
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite-preview-02-05',
     'gemini-1.5-flash',
     'gemini-1.5-pro',
+    'gemini-2.0-pro-exp-02-05',
     'gemini-2.0-flash-exp'
   ];
   
@@ -331,9 +334,12 @@ export async function generateGeminiResponse(
 
   // Model Rotation Strategy (Plan A -> B -> C)
   const modelRotation = [
-    'gemini-1.5-flash',            // Plan A: Stable, Fast & Best Vision for production
-    'gemini-1.5-pro',              // Plan B: High Accuracy Fallback
-    'gemini-2.0-flash-exp'         // Plan C: Next-gen speed fallback
+    'gemini-2.0-flash',            // Plan A: Latest stable fast model
+    'gemini-2.0-flash-lite-preview-02-05', // Plan B: New lite preview
+    'gemini-1.5-flash',            // Plan C: Stable fallback
+    'gemini-1.5-pro',              // Plan D: High Accuracy Fallback
+    'gemini-2.0-pro-exp-02-05',    // Plan E: Latest pro experimental
+    'gemini-2.0-flash-exp'         // Plan F: Older experimental
   ];
   
   // If the user specifically requested a model, we put it first
