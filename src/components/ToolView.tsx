@@ -294,7 +294,7 @@ export default function ToolView() {
         ctx?.drawImage(img, 0, 0, width, height);
         
         try {
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+          const dataUrl = canvas.toDataURL('image/webp', 0.8);
           setCropImage(dataUrl);
           setShowSourceSelect(false);
         } catch (err) {
@@ -378,9 +378,9 @@ export default function ToolView() {
         resizedCanvas.height = canvas.height * scale;
         const resizedCtx = resizedCanvas.getContext('2d');
         resizedCtx?.drawImage(canvas, 0, 0, resizedCanvas.width, resizedCanvas.height);
-        finalDataUrl = resizedCanvas.toDataURL('image/jpeg', 0.6);
+        finalDataUrl = resizedCanvas.toDataURL('image/webp', 0.8);
       } else {
-        finalDataUrl = canvas.toDataURL('image/jpeg', 0.6);
+        finalDataUrl = canvas.toDataURL('image/webp', 0.8);
       }
       
       setImage(finalDataUrl);

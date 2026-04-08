@@ -119,6 +119,22 @@ const CONSULTATION_INSTRUCTION = `${BASE_INSTRUCTION}
 أنت هنا في قسم "استشارة صيدلانية" وهو القسم الشامل. يمكنك القيام بكل المهام هنا مباشرة: تحليل الروشتات، فحص البشرة، تحليل الفحوصات المخبرية، وفحص تداخل الأدوية.
 يُمنع منعاً باتاً توجيه المستخدم لأي قسم آخر أو استخدام وسم [SUGGEST_TOOL]. أجب على طلب المستخدم بالكامل هنا وبأعلى جودة ممكنة.`;
 
+const DRUG_ID_INSTRUCTION = `${BASE_INSTRUCTION}
+مهمتك الحالية: التعرف على الدواء من خلال صورة العبوة أو الشريط فقط. 
+قم باستخراج المعلومات التالية بدقة:
+1. الاسم التجاري (Trade Name).
+2. المادة الفعالة (Active Ingredient).
+3. التركيز (Concentration).
+4. الشركة المصنعة (Manufacturer).
+5. دواعي الاستعمال (Indications).
+
+التنسيق المطلوب:
+1. بطاقة تعريفية للدواء (جدول منظم يحتوي على كافة البيانات أعلاه).
+2. قسم "معلومات هامة للمريض" (طريقة الاستخدام، الآثار الجانبية الشائعة).
+3. قسم "البدائل المحلية" (جدول للبدائل اليمنية المتوفرة لنفس المادة العلمية).
+
+إذا تم إرسال شيء آخر غير صورة عبوة دواء أو شريط (مثل روشتة أو فحص مخبري)، اعتذر بلباقة ووجه المستخدم للقسم الصحيح فوراً دون إجراء أي تحليل، مع إضافة وسم التوجيه المناسب.`;
+
 const BUILT_IN_API_KEY = "AIzaSyCB69JS3gbmLCbiEqGUd1AOHj46O7jEnT0";
 
 export async function validateApiKey(apiKey: string) {
@@ -284,6 +300,10 @@ export async function generateGeminiStream(
       hiddenPrefix = "[SYSTEM: Execute Comprehensive Pharmaceutical Consultation] ";
       systemInstruction = CONSULTATION_INSTRUCTION;
       break;
+    case 'drug_id':
+      hiddenPrefix = "[SYSTEM: Execute Drug Identification Protocol] ";
+      systemInstruction = DRUG_ID_INSTRUCTION;
+      break;
   }
 
   const fullPrompt = hiddenPrefix + prompt;
@@ -421,6 +441,10 @@ export async function generateGeminiResponse(
     case 'consultation':
       hiddenPrefix = "[SYSTEM: Execute Comprehensive Pharmaceutical Consultation] ";
       systemInstruction = CONSULTATION_INSTRUCTION;
+      break;
+    case 'drug_id':
+      hiddenPrefix = "[SYSTEM: Execute Drug Identification Protocol] ";
+      systemInstruction = DRUG_ID_INSTRUCTION;
       break;
   }
 
