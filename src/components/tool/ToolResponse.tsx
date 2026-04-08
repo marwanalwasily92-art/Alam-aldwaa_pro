@@ -127,23 +127,13 @@ const ToolResponse = React.forwardRef<HTMLDivElement, ToolResponseProps>(({
             <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
             <p className="text-sm font-bold">{error}</p>
           </div>
-          {(error.includes("مفتاح") || error.includes("API")) && onOpenSettings && (
+          {(error.includes("مفتاح") || error.includes("API") || error.includes("حصتك")) && onOpenSettings && (
             <div className="flex gap-2 mr-8">
               <button 
                 onClick={onOpenSettings}
                 className="text-xs bg-red-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-red-700 transition-colors w-fit"
               >
-                تغيير مفتاح API
-              </button>
-              <button 
-                onClick={() => {
-                  if (confirm('هل تريد حذف المفتاح الحالي تماماً؟')) {
-                    onOpenSettings();
-                  }
-                }}
-                className="text-xs bg-white border border-red-200 text-red-600 px-4 py-2 rounded-xl font-bold hover:bg-red-50 transition-colors w-fit"
-              >
-                حذف المفتاح
+                إضافة مفتاحك الخاص
               </button>
             </div>
           )}

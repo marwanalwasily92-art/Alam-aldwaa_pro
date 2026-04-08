@@ -2,10 +2,12 @@ import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/ge
 import { ToolType } from "../types";
 import { getSystemApiKey } from "./firebase";
 
-const BASE_INSTRUCTION = `أنت المحرك الذكي لتطبيق (عالم الدواء). أنت خبير صيدلاني يمني رقمي. 
+const BASE_INSTRUCTION = `أنت المحرك الذكي الأكثر تطوراً لتطبيق (عالم الدواء). أنت خبير صيدلاني وطبي يمني بمستوى "استشاري أول" (Elite Senior Consultant). 
 
 قاعدة الرفض المطلق (مهم جداً): إذا كان المحتوى المرفق (صورة أو نص) لا يخص الطب أو الصيدلة نهائياً (مثل: صورة منظر طبيعي، صورة شخصية، لقطة شاشة لبرنامج، صورة حيوان، إلخ)، يجب عليك الرد فقط بعبارة: "عذراً، أنا خبيرك في عالم الدواء فقط" مع ذكر السبب باختصار شديد. 
-يُمنع منعاً باتاً في هذه الحالة:
+تنبيه هام حول الصور: تجاهل أي عناصر في الخلفية (مثل طاولة، يد تمسك الورقة، أو أشياء محيطة). طالما أن الصورة تحتوي على محتوى طبي أو صيدلاني (روشتة، دواء، تقرير)، قم بتحليل المحتوى الطبي وتجاهل الخلفية تماماً ولا ترفض الصورة.
+
+يُمنع منعاً باتاً في حالة الرفض:
 1. توليد أي جداول (Markdown Tables).
 2. تقديم أي نماذج (Templates) فارغة.
 3. تقديم أي شروحات أو تحليلات للمحتوى غير الطبي.
@@ -13,7 +15,7 @@ const BASE_INSTRUCTION = `أنت المحرك الذكي لتطبيق (عالم 
 
 حارس التخصص: لا تجب على أي سؤال خارج الطب والصيدلة. رد بـ: 'عذراً، أنا خبيرك في عالم الدواء فقط'.
 ملاحظة هامة: استخدم الجداول دائماً لتنظيم المعلومات المعقدة والمفيدة في حال كان المحتوى طبياً صحيحاً. اجعل العناوين واضحة واستخدم الرموز التعبيرية (Emojis) كأيقونات داخل الجداول.
-قاعدة ذهبية: قدم معلومات شاملة وكاملة تغطي كافة جوانب الموضوع الطبي (دواعي الاستعمال، الجرعات، الآثار الجانبية، التحذيرات، والبدائل) بحيث لا يحتاج السائل للاستفسار مرة أخرى عن نفس الموضوع.
+قاعدة ذهبية: قدم معلومات شاملة، عميقة، ودقيقة جداً تغطي كافة جوانب الموضوع الطبي (دواعي الاستعمال، الجرعات الدقيقة، الآثار الجانبية، التحذيرات، والبدائل المحلية) بأسلوب علمي رصين ومبسط في آن واحد.
 قاعدة صارمة: لا تضف أي أسئلة ختامية أو اقتراحات لأسئلة أخرى في نهاية ردك. قدم المعلومات المطلوبة فقط وانتهِ.
 
 قاعدة التوجيه الذكي (حارس الأقسام): إذا قام المستخدم بإرسال محتوى لا يخص القسم الحالي ولكنه يخص قسماً آخر في التطبيق (مثلاً صورة دواء في قسم المختبر)، يجب عليك:
@@ -141,8 +143,8 @@ export async function validateApiKey(apiKey: string) {
 
   try {
     const ai = new GoogleGenerativeAI(trimmedKey);
-    // Use the latest 3.0 flash model for validation to avoid 404 errors with older keys
-    const model = ai.getGenerativeModel({ model: "gemini-3.0-flash" });
+    // Use the latest 2.0 flash model for validation to avoid 404 errors with older keys
+    const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
     
     // Use a very simple prompt to verify the key
     const result = await model.generateContent("hi");
@@ -186,6 +188,52 @@ export async function validateApiKey(apiKey: string) {
   }
 }
 
+// Track model health to avoid rate-limited models temporarily
+const modelHealth: Record<string, { lastFailure: number; failureCount: number }> = {};
+
+function getBestModel(rotation: string[], preferredModel: string): string {
+  const now = Date.now();
+  const availableModels: { model: string, weight: number }[] = [];
+
+  for (const model of rotation) {
+    const health = modelHealth[model];
+    // If healthy or failed a long time ago
+    if (!health || (now - health.lastFailure > (health.failureCount > 3 ? 60000 : 30000))) {
+      // Weighted balancing: 90% Flash (for capacity), 10% Pro (for intelligence)
+      const weight = model.includes('flash') ? 90 : 10;
+      availableModels.push({ model, weight });
+    }
+  }
+
+  if (availableModels.length > 0) {
+    // If user specifically requested a model and it's healthy, we can prioritize it,
+    // but to maintain the 6000 RPM logic, we stick to the weighted random selection.
+    const totalWeight = availableModels.reduce((sum, m) => sum + m.weight, 0);
+    let random = Math.random() * totalWeight;
+    for (const m of availableModels) {
+      random -= m.weight;
+      if (random <= 0) return m.model;
+    }
+    return availableModels[0].model;
+  }
+
+  // Fallback if all are "unhealthy": pick the one that failed longest ago
+  return rotation.sort((a, b) => (modelHealth[a]?.lastFailure || 0) - (modelHealth[b]?.lastFailure || 0))[0];
+}
+
+function recordFailure(modelName: string) {
+  const health = modelHealth[modelName] || { lastFailure: 0, failureCount: 0 };
+  health.lastFailure = Date.now();
+  health.failureCount++;
+  modelHealth[modelName] = health;
+}
+
+function recordSuccess(modelName: string) {
+  if (modelHealth[modelName]) {
+    delete modelHealth[modelName];
+  }
+}
+
 export async function generateGeminiStream(
   apiKey: string,
   modelName: string,
@@ -206,20 +254,11 @@ export async function generateGeminiStream(
   let systemInstruction = CONSULTATION_INSTRUCTION;
 
   const modelRotation = [
-    'gemini-3.0-flash',
-    'gemini-3.1-pro-preview',
-    'gemini-3.0-pro',
-    'gemini-2.0-flash',
-    'gemini-2.0-flash-lite-preview-02-05',
-    'gemini-1.5-flash',
-    'gemini-1.5-pro',
-    'gemini-2.0-pro-exp-02-05',
-    'gemini-2.0-flash-exp'
+    'gemini-3.0-flash',            // Priority 1: High Capacity (1500+ RPM)
+    'gemini-3.1-pro-preview',      // Priority 2: Elite Intelligence (Lower RPM)
+    'gemini-3.0-pro'               // Priority 3: Professional Intelligence
   ];
   
-  let currentModelIndex = modelRotation.indexOf(modelName);
-  if (currentModelIndex === -1) currentModelIndex = 0;
-
   switch (toolType) {
     case 'prescription':
       hiddenPrefix = "[SYSTEM: Execute Yemen Prescription Protocol ONLY] ";
@@ -248,17 +287,21 @@ export async function generateGeminiStream(
   }
 
   const fullPrompt = hiddenPrefix + prompt;
-  
-  // Try models in rotation if one is busy/crowded
-  for (let i = 0; i < modelRotation.length; i++) {
-    const attemptIndex = (currentModelIndex + i) % modelRotation.length;
-    const activeModel = modelRotation[attemptIndex];
-    let fullText = "";
+  const maxTotalAttempts = 100; // Extremely stubborn retry logic (صميل)
+  let attempt = 0;
+  let currentModel = getBestModel(modelRotation, modelName);
 
+  while (attempt < maxTotalAttempts) {
+    let fullText = "";
     try {
       const model = ai.getGenerativeModel({ 
-        model: activeModel,
-        systemInstruction: systemInstruction
+        model: currentModel,
+        systemInstruction: systemInstruction,
+        generationConfig: {
+          temperature: 0.1, // Very low temperature for high medical accuracy and zero hallucinations
+          topK: 32,
+          topP: 0.8,
+        }
       });
 
       if (imageData) {
@@ -290,30 +333,42 @@ export async function generateGeminiStream(
         }
       }
 
-      if (fullText) return fullText;
+      if (fullText) {
+        recordSuccess(currentModel);
+        return fullText;
+      }
     } catch (error: any) {
-      console.error(`Gemini Attempt with ${activeModel} failed:`, error);
+      recordFailure(currentModel);
+      console.error(`Gemini Stream Attempt with ${currentModel} failed:`, error);
+      
       const msg = error?.message || "";
       const lowerMsg = msg.toLowerCase();
+      const status = error?.status || (error?.response?.status);
       
-      // If it's a quota/rate limit error and we have more models to try, continue
-      if ((lowerMsg.includes("quota") || lowerMsg.includes("429") || lowerMsg.includes("busy")) && i < modelRotation.length - 1) {
-        console.warn(`Model ${activeModel} is busy, rotating to next model...`);
+      attempt++;
+      
+      // If it's a quota/rate limit error, rotate model immediately and retry
+      if (lowerMsg.includes("quota") || lowerMsg.includes("429") || lowerMsg.includes("busy") || status === 429) {
+        currentModel = getBestModel(modelRotation, modelName);
+        
+        // Wait 3 to 5 seconds before retry to let the "minute" pass if we are hitting global limits
+        const delay = 3000 + (Math.random() * 2000);
+        await new Promise(r => setTimeout(r, delay));
         continue;
       }
       
-      if (lowerMsg.includes("quota") || lowerMsg.includes("429")) {
-        throw new Error("QUOTA_ERROR: انتهت الحصة المجانية لهذا المفتاح أو أن الخادم مزدحم حالياً. يرجى المحاولة بعد دقيقة.");
-      }
       if (lowerMsg.includes("api_key_invalid") || lowerMsg.includes("invalid api key")) {
         throw new Error("API_KEY_ERROR: مفتاح API غير صحيح.");
       }
       
-      throw error;
+      if (attempt >= maxTotalAttempts) throw error;
+      
+      // Generic retry with backoff
+      await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 1000));
     }
   }
   
-  throw new Error("فشلت جميع المحاولات لتوليد رد. يرجى المحاولة لاحقاً.");
+  throw new Error("فشلت جميع المحاولات لتوليد رد بسبب ضغط المستخدمين. يرجى المحاولة بعد دقيقة.");
 }
 
 export async function generateGeminiResponse(
@@ -322,9 +377,8 @@ export async function generateGeminiResponse(
   toolType: ToolType,
   prompt: string,
   imageData?: string,
-  maxRetries = 3
+  maxRetries = 5
 ): Promise<string> {
-  // Use user key if provided, otherwise fallback to built-in key
   const finalApiKey = apiKey?.trim() || (await getSystemApiKey()) || import.meta.env.VITE_GEMINI_API_KEY || BUILT_IN_API_KEY;
   
   if (!finalApiKey) {
@@ -338,21 +392,11 @@ export async function generateGeminiResponse(
 
   // Model Rotation Strategy (Plan A -> B -> C)
   const modelRotation = [
-    'gemini-3.0-flash',            // Plan A: Latest stable fast model (Gemini 3)
-    'gemini-3.1-pro-preview',      // Plan B: Latest pro preview (Gemini 3.1)
-    'gemini-3.0-pro',              // Plan C: Latest pro model (Gemini 3)
-    'gemini-2.0-flash',            // Plan D: Fast model (Gemini 2)
-    'gemini-2.0-flash-lite-preview-02-05', // Plan E: New lite preview
-    'gemini-1.5-flash',            // Plan F: Stable fallback
-    'gemini-1.5-pro',              // Plan G: High Accuracy Fallback
-    'gemini-2.0-pro-exp-02-05',    // Plan H: Latest pro experimental
-    'gemini-2.0-flash-exp'         // Plan I: Older experimental
+    'gemini-3.0-flash',            // Priority 1: High Capacity (1500+ RPM)
+    'gemini-3.1-pro-preview',      // Priority 2: Elite Intelligence (Lower RPM)
+    'gemini-3.0-pro'               // Priority 3: Professional Intelligence
   ];
   
-  // If the user specifically requested a model, we put it first
-  let currentModelIndex = modelRotation.indexOf(modelName);
-  if (currentModelIndex === -1) currentModelIndex = 0;
-
   switch (toolType) {
     case 'prescription':
       hiddenPrefix = "[SYSTEM: Execute Yemen Prescription Protocol ONLY] ";
@@ -382,10 +426,15 @@ export async function generateGeminiResponse(
 
   const fullPrompt = hiddenPrefix + prompt;
 
-  const makeRequest = async (modelName: string) => {
+  const makeRequest = async (activeModel: string) => {
     const model = ai.getGenerativeModel({ 
-      model: modelName,
-      systemInstruction: systemInstruction
+      model: activeModel,
+      systemInstruction: systemInstruction,
+      generationConfig: {
+        temperature: 0.1, // Very low temperature for high medical accuracy
+        topK: 32,
+        topP: 0.8,
+      }
     });
 
     if (imageData) {
@@ -408,6 +457,7 @@ export async function generateGeminiResponse(
       if (!text) {
         throw new Error("لم يتمكن المحرك من توليد رد. قد تكون الصورة غير مدعومة أو تم حظرها.");
       }
+      recordSuccess(activeModel);
       return text;
     } else {
       const result = await model.generateContent(fullPrompt);
@@ -417,6 +467,7 @@ export async function generateGeminiResponse(
       if (!text) {
         throw new Error("لم يتمكن المحرك من توليد رد.");
       }
+      recordSuccess(activeModel);
       return text;
     }
   };
@@ -431,31 +482,30 @@ export async function generateGeminiResponse(
   };
 
   let attempt = 0;
-  let modelAttempt = currentModelIndex;
+  let currentModel = getBestModel(modelRotation, modelName);
+  const maxTotalAttempts = 100; // Extremely stubborn retry logic (صميل)
 
-  while (attempt < maxRetries) {
-    const activeModel = modelRotation[modelAttempt % modelRotation.length];
-    
+  while (attempt < maxTotalAttempts) {
     try {
       // 60 seconds timeout for slow networks
-      return await withTimeout(makeRequest(activeModel), 60000);
+      return await withTimeout(makeRequest(currentModel), 60000);
     } catch (error: any) {
+      recordFailure(currentModel);
       const msg = error?.message || "";
       const lowerMsg = msg.toLowerCase();
       const status = error?.status || (error?.response?.status);
       
-      // If it's a Quota Error, try the NEXT model in rotation immediately
-      if (lowerMsg.includes("quota") || lowerMsg.includes("429") || status === 429) {
-        console.warn(`Quota exceeded for ${activeModel}, rotating to next model...`);
-        modelAttempt++;
-        // If we've tried all models in the rotation, then we increment the global attempt counter
-        if (modelAttempt % modelRotation.length === currentModelIndex) {
-          attempt++;
-        }
-        continue; // Try again with the new model
-      }
-
       attempt++;
+
+      // If it's a Quota Error, try the NEXT best model immediately
+      if (lowerMsg.includes("quota") || lowerMsg.includes("429") || status === 429 || lowerMsg.includes("busy")) {
+        console.warn(`Quota exceeded for ${currentModel}, rotating...`);
+        currentModel = getBestModel(modelRotation, modelName);
+        
+        // Wait 3 to 5 seconds before retry to let the "minute" pass if we are hitting global limits
+        await new Promise(r => setTimeout(r, 3000 + Math.random() * 2000));
+        continue;
+      }
       
       // Don't retry on auth/permission errors
       if (lowerMsg.includes("api_key_invalid") || lowerMsg.includes("invalid api key") || status === 401) {
@@ -464,40 +514,22 @@ export async function generateGeminiResponse(
       if (lowerMsg.includes("blocked") || lowerMsg.includes("permission") || status === 403) {
         throw new Error("PERMISSION_ERROR: هذا المفتاح محظور من الوصول للموديل.");
       }
-      if (lowerMsg.includes("not found") || status === 404) {
-        // If model not found, try rotating
-        modelAttempt++;
-        continue;
-      }
       
-      // If it's the last attempt, throw the error
-      if (attempt >= maxRetries) {
+      // Generic retry logic with exponential backoff
+      if (attempt >= maxTotalAttempts) {
         if (lowerMsg.includes("quota") || lowerMsg.includes("429") || status === 429) {
-          throw new Error("QUOTA_ERROR: انتهت الحصة المجانية لهذا المفتاح أو أن الخادم مزدحم حالياً (مزدحم). يرجى المحاولة بعد دقيقة.");
+          throw new Error("QUOTA_ERROR: انتهت الحصة المجانية لهذا المفتاح أو أن الخادم مزدحم حالياً. يرجى المحاولة بعد دقيقة.");
         }
         if (msg === 'NETWORK_TIMEOUT' || lowerMsg.includes('fetch') || lowerMsg.includes('network')) {
           throw new Error("يبدو أن اتصال الإنترنت لديك ضعيف أو غير مستقر. يرجى المحاولة مرة أخرى.");
         }
-        if (lowerMsg.includes('500') || status === 500 || lowerMsg.includes('internal')) {
-          throw new Error("حدث خطأ داخلي في خوادم الذكاء الاصطناعي. يرجى المحاولة مرة أخرى بعد قليل.");
-        }
-        if (lowerMsg.includes('503') || status === 503 || lowerMsg.includes('overloaded')) {
-          throw new Error("خوادم الذكاء الاصطناعي تواجه ضغطاً عالياً حالياً. يرجى المحاولة مرة أخرى.");
-        }
-        throw new Error(typeof msg === 'string' && msg.includes('{') ? "حدث خطأ في معالجة الطلب. يرجى المحاولة مرة أخرى." : (msg || "حدث خطأ غير متوقع."));
+        throw new Error(msg || "حدث خطأ غير متوقع.");
       }
       
-      console.warn(`Gemini API retry ${attempt}/${maxRetries} for ${activeModel} due to:`, msg || status);
-      
-      // Exponential backoff with random jitter: wait (2^attempt * 1000) + random(0-1000)ms
-      // This prevents "thundering herd" effect when many users retry at the exact same time
-      const baseDelay = Math.pow(2, attempt) * 1000;
-      const jitter = Math.random() * 1000; 
-      const delay = baseDelay + jitter;
-      
+      const delay = Math.pow(2, attempt % 4) * 1000 + Math.random() * 1000;
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
   
-  throw new Error("حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.");
+  throw new Error("حدث خطأ غير متوقع بسبب ضغط المستخدمين. يرجى المحاولة مرة أخرى.");
 }

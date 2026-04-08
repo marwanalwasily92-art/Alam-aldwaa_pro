@@ -242,6 +242,19 @@ export default function ToolView() {
     }
   }, [loading]);
 
+  useEffect(() => {
+    const handleOffline = () => {
+      if (loading) {
+        setLoading(false);
+        setError('انقطع الاتصال بالإنترنت. يرجى التحقق من الشبكة وإعادة المحاولة.');
+        setPendingMessage(null);
+      }
+    };
+
+    window.addEventListener('offline', handleOffline);
+    return () => window.removeEventListener('offline', handleOffline);
+  }, [loading]);
+
   if (!currentTool) return null;
 
 
@@ -305,19 +318,13 @@ export default function ToolView() {
 
   const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const { width, height } = e.currentTarget;
-    const initialCrop = centerCrop(
-      makeAspectCrop(
-        {
-          unit: '%',
-          width: 90,
-        },
-        4 / 3,
-        width,
-        height
-      ),
-      width,
-      height
-    );
+    const initialCrop: Crop = {
+      unit: '%',
+      x: 5,
+      y: 5,
+      width: 90,
+      height: 90
+    };
     setCrop(initialCrop);
     setCompletedCrop(convertToPixelCrop(initialCrop, width, height));
   };
@@ -406,6 +413,13 @@ export default function ToolView() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (loading) return; // Spam Click Protection
+    
+    if (!navigator.onLine) {
+      setError('لا يوجد اتصال بالإنترنت. يرجى التحقق من الشبكة والمحاولة مرة أخرى.');
+      return;
+    }
+    
     let finalInput = input.trim();
     if (tool === 'interaction') {
       const allDrugs = [...drugs];
@@ -424,36 +438,39 @@ export default function ToolView() {
 
     if (!finalInput && !image) return;
 
-    let finalImage = image;
-    
-    // Compress image if exists
-    if (finalImage) {
-      try {
-        setLoadingMessage('جاري ضغط الصورة (الحد الأقصى 200KB)...');
-        const response = await fetch(finalImage);
-        const blob = await response.blob();
-        const options = {
-          maxSizeMB: 0.2, // 200KB
-          maxWidthOrHeight: 1024,
-          useWebWorker: true,
-        };
-        const compressedBlob = await imageCompression(blob as File, options);
-        const reader = new FileReader();
-        finalImage = await new Promise((resolve) => {
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.readAsDataURL(compressedBlob);
-        });
-      } catch (compressionErr) {
-        console.error('Compression error:', compressionErr);
-        setError('فشل ضغط الصورة. يرجى المحاولة بصورة أصغر.');
-        return;
-      }
-    }
-
-    setPendingMessage({ text: finalInput, image: finalImage });
     setLoading(true);
     setError(null);
     setResponse(null);
+
+    let finalImage = image;
+    
+      // Compress image if exists
+      if (finalImage) {
+        try {
+          setLoadingMessage('جاري ضغط الصورة مع الحفاظ على دقة التفاصيل...');
+          const response = await fetch(finalImage);
+          const blob = await response.blob();
+          const options = {
+            maxSizeMB: 0.15, // Reduced to 150KB for WebP
+            maxWidthOrHeight: 1920, // Kept at Full HD (1920px) to preserve OCR accuracy
+            useWebWorker: true,
+            fileType: 'image/webp', // Convert to WebP to save bandwidth
+          };
+          const compressedBlob = await imageCompression(blob as File, options);
+          const reader = new FileReader();
+          finalImage = await new Promise((resolve) => {
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(compressedBlob);
+          });
+        } catch (compressionErr) {
+          console.error('Compression error:', compressionErr);
+          setError('فشل معالجة الصورة. يرجى المحاولة بصورة أخرى.');
+          setLoading(false);
+          return;
+        }
+      }
+
+    setPendingMessage({ text: finalInput, image: finalImage });
     setInput('');
     setImage(null);
     setDrugs([]);
@@ -463,9 +480,6 @@ export default function ToolView() {
     }
 
     try {
-      setLoading(true);
-      setError(null);
-      setResponse(null);
       
       // 1. Check Cache first (before incrementing quota)
       const cachedResponse = await getCache(tool, finalInput, finalImage || undefined);
@@ -497,7 +511,7 @@ export default function ToolView() {
       const maxRetries = 3;
       let success = false;
       let result = '';
-      let currentModel = config?.model || 'gemini-1.5-flash';
+      let currentModel = config?.model || 'gemini-2.0-flash';
 
       while (retryCount <= maxRetries && !success) {
         try {
@@ -522,10 +536,10 @@ export default function ToolView() {
         } catch (err: any) {
           const msg = err.message || "";
           
-          if ((msg.includes("QUOTA_ERROR") || msg.includes("quota") || msg.includes("429")) && currentModel === 'gemini-1.5-pro') {
-            currentModel = 'gemini-1.5-flash';
+          if ((msg.includes("QUOTA_ERROR") || msg.includes("quota") || msg.includes("429")) && currentModel === 'gemini-2.0-pro-exp-02-05') {
+            currentModel = 'gemini-2.0-flash';
             if (config) {
-              saveConfig({ ...config, model: 'gemini-1.5-flash' });
+              saveConfig({ ...config, model: 'gemini-2.0-flash' });
             }
             setLoadingMessage("انتهت حصة Pro، جاري المحاولة باستخدام Flash...");
             continue;

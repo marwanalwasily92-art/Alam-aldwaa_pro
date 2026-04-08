@@ -68,7 +68,7 @@ const ResultDisplay = forwardRef<HTMLDivElement, ResultDisplayProps>(({
               ol: ({node, ...props}) => <ol {...props} className="list-decimal list-inside mb-6 space-y-3" />,
               strong: ({node, ...props}) => <strong {...props} className="font-bold text-blue-700" />,
               table: ({node, ...props}) => (
-                <div className="w-full my-10 rounded-2xl border border-slate-200 shadow-sm relative">
+                <div className="w-full my-10 rounded-2xl border border-slate-200 shadow-sm relative overflow-x-auto">
                   <table {...props} className="min-w-full border-collapse bg-white" />
                 </div>
               ),

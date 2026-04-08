@@ -239,7 +239,7 @@ export default function HistoryVault() {
                       rehypePlugins={[rehypeRaw, rehypeTableLabels]}
                       components={{
                         table: ({node, ...props}) => (
-                          <div className="w-full my-6 rounded-2xl border border-slate-200 shadow-sm">
+                          <div className="w-full my-6 rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
                             <table {...props} className="min-w-full border-collapse" />
                           </div>
                         ),

@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { initializeFirestore, getDocFromServer, doc, getDoc, setDoc, updateDoc, increment, serverTimestamp, setLogLevel } from "firebase/firestore";
-import { getStorage, ref, deleteObject } from "firebase/storage";
+import { getStorage, ref, deleteObject, listAll } from "firebase/storage";
 import firebaseConfig from '../../firebase-applet-config.json';
 
 // Suppress transient connection warnings from Firebase SDK
@@ -91,9 +91,20 @@ export async function createHash(input: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Helper to normalize input for better cache hits
+function sanitizeInput(input: string): string {
+  if (!input) return '';
+  return input
+    .toLowerCase()
+    .replace(/[^\S\r\n]+/g, ' ') // Replace multiple spaces with single space
+    .replace(/[\u064B-\u065F\u0670]/g, '') // Remove Arabic diacritics (Tashkeel)
+    .trim();
+}
+
 export async function getCache(toolType: string, prompt: string, imageData?: string): Promise<string | null> {
   try {
-    const inputToHash = `${toolType}_${prompt}_${imageData || ''}`;
+    const sanitizedPrompt = sanitizeInput(prompt);
+    const inputToHash = `${toolType}_${sanitizedPrompt}_${imageData || ''}`;
     const hash = await createHash(inputToHash);
     const cacheRef = doc(db, 'analysis_cache', hash);
     const cacheSnap = await getDoc(cacheRef);
@@ -116,12 +127,13 @@ export async function getCache(toolType: string, prompt: string, imageData?: str
 
 export async function setCache(toolType: string, prompt: string, response: string, imageData?: string) {
   try {
-    const inputToHash = `${toolType}_${prompt}_${imageData || ''}`;
+    const sanitizedPrompt = sanitizeInput(prompt);
+    const inputToHash = `${toolType}_${sanitizedPrompt}_${imageData || ''}`;
     const hash = await createHash(inputToHash);
     const cacheRef = doc(db, 'analysis_cache', hash);
     await setDoc(cacheRef, {
       tool_type: toolType,
-      prompt_hash: await createHash(prompt),
+      prompt_hash: await createHash(sanitizedPrompt),
       response: response,
       created_at: serverTimestamp()
     });

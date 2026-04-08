@@ -11,7 +11,7 @@ interface ApiKeyModalProps {
 
 export default function ApiKeyModal({ currentConfig, onSave, onClose }: ApiKeyModalProps) {
   const [apiKey, setApiKey] = useState(currentConfig?.apiKey || '');
-  const [model, setModel] = useState<'gemini-1.5-flash' | 'gemini-1.5-pro' | 'gemini-2.0-flash-exp' | 'gemini-3-flash-preview' | 'gemini-3.1-pro-preview'>(currentConfig?.model || 'gemini-1.5-flash');
+  const [model, setModel] = useState<UserConfig['model']>(currentConfig?.model || 'gemini-3.0-flash');
   const [incognitoMode] = useState<boolean>(currentConfig?.incognitoMode || false);
   const [isValidating, setIsValidating] = useState(false);
   const [validationResult, setValidationResult] = useState<{ valid: boolean; message: string } | null>(null);
@@ -29,8 +29,10 @@ export default function ApiKeyModal({ currentConfig, onSave, onClose }: ApiKeyMo
     e.preventDefault();
     if (showDeleteConfirm) return;
     const trimmedKey = apiKey.trim();
+    
+    // If empty, just save the model preference (fallback to default key)
     if (!trimmedKey) {
-      setValidationResult({ valid: false, message: "يرجى إدخال المفتاح أولاً." });
+      onSave({ apiKey: '', model, incognitoMode });
       return;
     }
 
@@ -70,7 +72,7 @@ export default function ApiKeyModal({ currentConfig, onSave, onClose }: ApiKeyMo
         <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
           <div className="space-y-2">
             <div className="flex justify-between items-center">
-              <label className="text-sm font-bold text-slate-700 block">مفتاح Gemini API</label>
+              <label className="text-sm font-bold text-slate-700 block">مفتاحك الخاص (اختياري)</label>
               {currentConfig?.apiKey && (
                 <div className="flex items-center gap-2">
                   {showDeleteConfirm ? (
@@ -97,12 +99,20 @@ export default function ApiKeyModal({ currentConfig, onSave, onClose }: ApiKeyMo
                       onClick={() => setShowDeleteConfirm(true)}
                       className="text-[10px] text-red-600 font-bold hover:underline"
                     >
-                      حذف المفتاح الحالي
+                      حذف المفتاح الخاص
                     </button>
                   )}
                 </div>
               )}
             </div>
+            
+            {!currentConfig?.apiKey && !apiKey && (
+              <div className="bg-blue-50 text-blue-700 text-xs p-3 rounded-xl mb-2 flex items-start gap-2">
+                <Info className="w-4 h-4 shrink-0 mt-0.5" />
+                <p>أنت تستخدم <strong>المفتاح التلقائي المدمج</strong> حالياً. لا يمكنك تغييره أو حذفه. لكن يمكنك إضافة مفتاحك الخاص أدناه للحصول على حصة خاصة (10 محاولات).</p>
+              </div>
+            )}
+
             <div className="relative">
               <input
                 type="password"
@@ -112,7 +122,7 @@ export default function ApiKeyModal({ currentConfig, onSave, onClose }: ApiKeyMo
                   setApiKey(value);
                   setValidationResult(null);
                 }}
-                placeholder="أدخل مفتاح Gemini هنا..."
+                placeholder="أدخل مفتاح Gemini الخاص بك هنا..."
                 className={`w-full bg-slate-50 border-2 rounded-xl px-4 py-3 focus:ring-0 outline-none transition-all text-left font-mono ${
                   validationResult?.valid 
                     ? 'border-green-500 bg-green-50' 
@@ -120,7 +130,6 @@ export default function ApiKeyModal({ currentConfig, onSave, onClose }: ApiKeyMo
                       ? 'border-red-500 bg-red-50' 
                       : 'border-slate-200 focus:border-blue-500'
                 }`}
-                required
                 disabled={isValidating}
               />
               {apiKey && !isValidating && !validationResult?.valid && (
@@ -147,29 +156,29 @@ export default function ApiKeyModal({ currentConfig, onSave, onClose }: ApiKeyMo
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => setModel('gemini-1.5-flash')}
+                onClick={() => setModel('gemini-3.0-flash')}
                 disabled={isValidating}
                 className={`p-3 rounded-xl border-2 transition-all text-center ${
-                  model === 'gemini-1.5-flash' 
+                  model === 'gemini-3.0-flash' 
                     ? 'border-blue-600 bg-blue-50 text-blue-700 font-bold' 
                     : 'border-slate-200 text-slate-500'
                 }`}
               >
-                Gemini 1.5 Flash
-                <span className="block text-[10px] font-normal opacity-70">الأسرع والأكثر استقراراً</span>
+                Gemini 3.0 Flash
+                <span className="block text-[10px] font-normal opacity-70">الأسرع والأحدث</span>
               </button>
               <button
                 type="button"
-                onClick={() => setModel('gemini-1.5-pro')}
+                onClick={() => setModel('gemini-3.1-pro-preview')}
                 disabled={isValidating}
                 className={`p-3 rounded-xl border-2 transition-all text-center ${
-                  model === 'gemini-1.5-pro' 
+                  model === 'gemini-3.1-pro-preview' 
                     ? 'border-blue-600 bg-blue-50 text-blue-700 font-bold' 
                     : 'border-slate-200 text-slate-500'
                 }`}
               >
-                Gemini 1.5 Pro
-                <span className="block text-[10px] font-normal opacity-70">دقة عالية للخطوط الصعبة</span>
+                Gemini 3.1 Pro
+                <span className="block text-[10px] font-normal opacity-70">دقة عالية جداً للخطوط الصعبة</span>
               </button>
             </div>
           </div>
