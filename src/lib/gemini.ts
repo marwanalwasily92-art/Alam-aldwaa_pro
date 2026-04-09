@@ -135,7 +135,7 @@ const DRUG_ID_INSTRUCTION = `${BASE_INSTRUCTION}
 
 إذا تم إرسال شيء آخر غير صورة عبوة دواء أو شريط (مثل روشتة أو فحص مخبري)، اعتذر بلباقة ووجه المستخدم للقسم الصحيح فوراً دون إجراء أي تحليل، مع إضافة وسم التوجيه المناسب.`;
 
-const BUILT_IN_API_KEY = "AIzaSyCB69JS3gbmLCbiEqGUd1AOHj46O7jEnT0";
+const BUILT_IN_API_KEY = "AIzaSyDsHLnFLUXg_0MlEyD_mt_TXwxwwtCUmIk";
 
 export async function validateApiKey(apiKey: string) {
   // If no key is provided, we check if the built-in key exists
