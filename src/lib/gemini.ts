@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 import { ToolType } from "../types";
 import { getSystemApiKey } from "./firebase";
 
@@ -158,13 +158,13 @@ export async function validateApiKey(apiKey: string) {
   }
 
   try {
-    const ai = new GoogleGenAI({ apiKey: trimmedKey });
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: "hi",
-    });
+    const ai = new GoogleGenerativeAI(trimmedKey);
+    const model = ai.getGenerativeModel({ model: "gemini-3-flash-preview" });
+    const result = await model.generateContent("hi");
+    const response = await result.response;
+    const text = response.text();
     
-    if (response.text) {
+    if (text) {
       return { valid: true, message: "المفتاح صالح ويعمل بنجاح" };
     }
     
@@ -260,7 +260,7 @@ export async function generateGeminiStream(
     throw new Error("API_KEY_MISSING: لم يتم العثور على مفتاح تشغيل. يرجى التأكد من إعدادات النظام.");
   }
 
-  const ai = new GoogleGenAI({ apiKey: finalApiKey });
+  const ai = new GoogleGenerativeAI(finalApiKey);
   
   let hiddenPrefix = "";
   let systemInstruction = CONSULTATION_INSTRUCTION;
@@ -309,35 +309,42 @@ export async function generateGeminiStream(
   while (attempt < maxTotalAttempts) {
     let fullText = "";
     try {
-      let contents: any;
-      if (imageData) {
-        const base64Data = imageData.includes(',') ? imageData.split(',')[1] : imageData;
-        const mimeType = imageData.includes(';') ? imageData.split(';')[0].split(':')[1] : "image/jpeg";
-        contents = {
-          parts: [
-            { text: fullPrompt },
-            { inlineData: { mimeType, data: base64Data } }
-          ]
-        };
-      } else {
-        contents = fullPrompt;
-      }
-
-      const response = await ai.models.generateContentStream({
+      const model = ai.getGenerativeModel({ 
         model: currentModel,
-        contents,
-        config: {
-          systemInstruction,
+        systemInstruction: systemInstruction,
+        generationConfig: {
           temperature: 0.1,
           topK: 32,
           topP: 0.8,
         }
       });
 
-      for await (const chunk of response) {
-        if (chunk.text) {
-          fullText += chunk.text;
-          if (onChunk) onChunk(chunk.text);
+      if (imageData) {
+        const base64Data = imageData.includes(',') ? imageData.split(',')[1] : imageData;
+        const mimeType = imageData.includes(';') ? imageData.split(';')[0].split(':')[1] : "image/jpeg";
+        
+        const result = await model.generateContentStream([
+          fullPrompt,
+          {
+            inlineData: {
+              mimeType: mimeType,
+              data: base64Data
+            }
+          }
+        ]);
+
+        for await (const chunk of result.stream) {
+          const chunkText = chunk.text();
+          fullText += chunkText;
+          if (onChunk) onChunk(chunkText);
+        }
+      } else {
+        const result = await model.generateContentStream(fullPrompt);
+
+        for await (const chunk of result.stream) {
+          const chunkText = chunk.text();
+          fullText += chunkText;
+          if (onChunk) onChunk(chunkText);
         }
       }
 
@@ -388,7 +395,7 @@ export async function generateGeminiResponse(
     throw new Error("API_KEY_MISSING: لم يتم العثور على مفتاح تشغيل. يرجى التأكد من إعدادات النظام.");
   }
 
-  const ai = new GoogleGenAI({ apiKey: finalApiKey });
+  const ai = new GoogleGenerativeAI(finalApiKey);
   
   let hiddenPrefix = "";
   let systemInstruction = CONSULTATION_INSTRUCTION;
@@ -432,37 +439,49 @@ export async function generateGeminiResponse(
   const fullPrompt = hiddenPrefix + prompt;
 
   const makeRequest = async (activeModel: string) => {
-    let contents: any;
-    if (imageData) {
-      const base64Data = imageData.includes(',') ? imageData.split(',')[1] : imageData;
-      const mimeType = imageData.includes(';') ? imageData.split(';')[0].split(':')[1] : "image/jpeg";
-      contents = {
-        parts: [
-          { text: fullPrompt },
-          { inlineData: { mimeType, data: base64Data } }
-        ]
-      };
-    } else {
-      contents = fullPrompt;
-    }
-
-    const response = await ai.models.generateContent({
+    const model = ai.getGenerativeModel({ 
       model: activeModel,
-      contents,
-      config: {
-        systemInstruction,
+      systemInstruction: systemInstruction,
+      generationConfig: {
         temperature: 0.1,
         topK: 32,
         topP: 0.8,
       }
     });
-    
-    const text = response.text;
-    if (!text) {
-      throw new Error("لم يتمكن المحرك من توليد رد.");
+
+    if (imageData) {
+      const base64Data = imageData.includes(',') ? imageData.split(',')[1] : imageData;
+      const mimeType = imageData.includes(';') ? imageData.split(';')[0].split(':')[1] : "image/jpeg";
+      
+      const result = await model.generateContent([
+        fullPrompt,
+        {
+          inlineData: {
+            mimeType: mimeType,
+            data: base64Data
+          }
+        }
+      ]);
+      
+      const response = await result.response;
+      const text = response.text();
+      
+      if (!text) {
+        throw new Error("لم يتمكن المحرك من توليد رد.");
+      }
+      recordSuccess(activeModel);
+      return text;
+    } else {
+      const result = await model.generateContent(fullPrompt);
+      const response = await result.response;
+      const text = response.text();
+      
+      if (!text) {
+        throw new Error("لم يتمكن المحرك من توليد رد.");
+      }
+      recordSuccess(activeModel);
+      return text;
     }
-    recordSuccess(activeModel);
-    return text;
   };
 
   const withTimeout = <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {

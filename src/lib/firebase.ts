@@ -60,8 +60,8 @@ export async function getSystemApiKey(): Promise<string | null> {
     return null;
   } catch (error) {
     console.error("CRITICAL: Error fetching system API key from Firestore:", error);
-    // Don't swallow the error, let it bubble up so we can see it in the UI
-    throw new Error(`فشل في قراءة المفتاح من قاعدة البيانات: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
+    // Return null instead of throwing to allow fallback to other keys
+    return null;
   }
 }
 
