@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { ToolType } from "../types";
 import { getSystemApiKey } from "./firebase";
 
@@ -158,17 +158,13 @@ export async function validateApiKey(apiKey: string) {
   }
 
   try {
-    const ai = new GoogleGenerativeAI(trimmedKey);
-    // Use a stable model for validation
-    const model = ai.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+    const ai = new GoogleGenAI({ apiKey: trimmedKey });
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: "hi",
+    });
     
-    // Use a very simple prompt to verify the key
-    const result = await model.generateContent("hi");
-    const response = await result.response;
-    const text = response.text();
-    
-    // If we get here, the key is valid enough to make a request
-    if (text) {
+    if (response.text) {
       return { valid: true, message: "المفتاح صالح ويعمل بنجاح" };
     }
     
@@ -264,7 +260,7 @@ export async function generateGeminiStream(
     throw new Error("API_KEY_MISSING: لم يتم العثور على مفتاح تشغيل. يرجى التأكد من إعدادات النظام.");
   }
 
-  const ai = new GoogleGenerativeAI(finalApiKey);
+  const ai = new GoogleGenAI({ apiKey: finalApiKey });
   
   let hiddenPrefix = "";
   let systemInstruction = CONSULTATION_INSTRUCTION;
@@ -306,47 +302,41 @@ export async function generateGeminiStream(
   }
 
   const fullPrompt = hiddenPrefix + prompt;
-  const maxTotalAttempts = 100; // Extremely stubborn retry logic (صميل)
+  const maxTotalAttempts = 100;
   let attempt = 0;
   let currentModel = getBestModel(modelRotation, modelName === 'gemini-1.5-flash' ? 'gemini-3-flash-preview' : modelName);
 
   while (attempt < maxTotalAttempts) {
     let fullText = "";
     try {
-      const model = ai.getGenerativeModel({ 
+      let contents: any;
+      if (imageData) {
+        const base64Data = imageData.includes(',') ? imageData.split(',')[1] : imageData;
+        const mimeType = imageData.includes(';') ? imageData.split(';')[0].split(':')[1] : "image/jpeg";
+        contents = {
+          parts: [
+            { text: fullPrompt },
+            { inlineData: { mimeType, data: base64Data } }
+          ]
+        };
+      } else {
+        contents = fullPrompt;
+      }
+
+      const response = await ai.models.generateContentStream({
         model: currentModel,
-        systemInstruction: systemInstruction,
-        generationConfig: {
-          temperature: 0.1, // Very low temperature for high medical accuracy and zero hallucinations
+        contents,
+        config: {
+          systemInstruction,
+          temperature: 0.1,
           topK: 32,
           topP: 0.8,
         }
       });
 
-      if (imageData) {
-        const base64Data = imageData.includes(',') ? imageData.split(',')[1] : imageData;
-        const mimeType = imageData.includes(';') ? imageData.split(';')[0].split(':')[1] : "image/jpeg";
-        
-        const result = await model.generateContentStream([
-          fullPrompt,
-          {
-            inlineData: {
-              mimeType: mimeType,
-              data: base64Data
-            }
-          }
-        ]);
-
-        for await (const chunk of result.stream) {
-          const chunkText = chunk.text();
-          fullText += chunkText;
-          if (onChunk) onChunk(chunkText);
-        }
-      } else {
-        const result = await model.generateContentStream(fullPrompt);
-
-        for await (const chunk of result.stream) {
-          const chunkText = chunk.text();
+      for await (const chunk of response) {
+        const chunkText = chunk.text;
+        if (chunkText) {
           fullText += chunkText;
           if (onChunk) onChunk(chunkText);
         }
@@ -366,11 +356,8 @@ export async function generateGeminiStream(
       
       attempt++;
       
-      // If it's a quota/rate limit error, rotate model immediately and retry
       if (lowerMsg.includes("quota") || lowerMsg.includes("429") || lowerMsg.includes("busy") || status === 429) {
         currentModel = getBestModel(modelRotation, modelName === 'gemini-1.5-flash' ? 'gemini-3-flash-preview' : modelName);
-        
-        // Wait 3 to 5 seconds before retry to let the "minute" pass if we are hitting global limits
         const delay = 3000 + (Math.random() * 2000);
         await new Promise(r => setTimeout(r, delay));
         continue;
@@ -381,9 +368,7 @@ export async function generateGeminiStream(
       }
       
       if (attempt >= maxTotalAttempts) throw error;
-      
-      // Generic retry with backoff
-      await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 1000));
+      await new Promise(r => setTimeout(r, Math.pow(2, attempt % 5) * 1000));
     }
   }
   
@@ -404,12 +389,11 @@ export async function generateGeminiResponse(
     throw new Error("API_KEY_MISSING: لم يتم العثور على مفتاح تشغيل. يرجى التأكد من إعدادات النظام.");
   }
 
-  const ai = new GoogleGenerativeAI(finalApiKey);
+  const ai = new GoogleGenAI({ apiKey: finalApiKey });
   
   let hiddenPrefix = "";
   let systemInstruction = CONSULTATION_INSTRUCTION;
 
-  // Model Rotation Strategy (Plan A -> B -> C)
   const modelRotation = [
     'gemini-3-flash-preview',      // Priority 1: High Capacity
     'gemini-3.1-pro-preview',      // Priority 2: Elite Intelligence
@@ -449,49 +433,37 @@ export async function generateGeminiResponse(
   const fullPrompt = hiddenPrefix + prompt;
 
   const makeRequest = async (activeModel: string) => {
-    const model = ai.getGenerativeModel({ 
+    let contents: any;
+    if (imageData) {
+      const base64Data = imageData.includes(',') ? imageData.split(',')[1] : imageData;
+      const mimeType = imageData.includes(';') ? imageData.split(';')[0].split(':')[1] : "image/jpeg";
+      contents = {
+        parts: [
+          { text: fullPrompt },
+          { inlineData: { mimeType, data: base64Data } }
+        ]
+      };
+    } else {
+      contents = fullPrompt;
+    }
+
+    const response = await ai.models.generateContent({
       model: activeModel,
-      systemInstruction: systemInstruction,
-      generationConfig: {
-        temperature: 0.1, // Very low temperature for high medical accuracy
+      contents,
+      config: {
+        systemInstruction,
+        temperature: 0.1,
         topK: 32,
         topP: 0.8,
       }
     });
-
-    if (imageData) {
-      const base64Data = imageData.includes(',') ? imageData.split(',')[1] : imageData;
-      const mimeType = imageData.includes(';') ? imageData.split(';')[0].split(':')[1] : "image/jpeg";
-      
-      const result = await model.generateContent([
-        fullPrompt,
-        {
-          inlineData: {
-            mimeType: mimeType,
-            data: base64Data
-          }
-        }
-      ]);
-      
-      const response = await result.response;
-      const text = response.text();
-      
-      if (!text) {
-        throw new Error("لم يتمكن المحرك من توليد رد. قد تكون الصورة غير مدعومة أو تم حظرها.");
-      }
-      recordSuccess(activeModel);
-      return text;
-    } else {
-      const result = await model.generateContent(fullPrompt);
-      const response = await result.response;
-      const text = response.text();
-      
-      if (!text) {
-        throw new Error("لم يتمكن المحرك من توليد رد.");
-      }
-      recordSuccess(activeModel);
-      return text;
+    
+    const text = response.text;
+    if (!text) {
+      throw new Error("لم يتمكن المحرك من توليد رد.");
     }
+    recordSuccess(activeModel);
+    return text;
   };
 
   const withTimeout = <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
@@ -505,11 +477,10 @@ export async function generateGeminiResponse(
 
   let attempt = 0;
   let currentModel = getBestModel(modelRotation, modelName === 'gemini-1.5-flash' ? 'gemini-3-flash-preview' : modelName);
-  const maxTotalAttempts = 100; // Extremely stubborn retry logic (صميل)
+  const maxTotalAttempts = 100;
 
   while (attempt < maxTotalAttempts) {
     try {
-      // 60 seconds timeout for slow networks
       return await withTimeout(makeRequest(currentModel), 60000);
     } catch (error: any) {
       recordFailure(currentModel);
@@ -519,17 +490,13 @@ export async function generateGeminiResponse(
       
       attempt++;
 
-      // If it's a Quota Error, try the NEXT best model immediately
       if (lowerMsg.includes("quota") || lowerMsg.includes("429") || status === 429 || lowerMsg.includes("busy")) {
         console.warn(`Quota exceeded for ${currentModel}, rotating...`);
         currentModel = getBestModel(modelRotation, modelName === 'gemini-1.5-flash' ? 'gemini-3-flash-preview' : modelName);
-        
-        // Wait 3 to 5 seconds before retry to let the "minute" pass if we are hitting global limits
         await new Promise(r => setTimeout(r, 3000 + Math.random() * 2000));
         continue;
       }
       
-      // Don't retry on auth/permission errors
       if (lowerMsg.includes("api_key_invalid") || lowerMsg.includes("invalid api key") || status === 401) {
         throw new Error("API_KEY_ERROR: مفتاح API الذي تستخدمه غير صحيح أو تم إيقافه.");
       }
@@ -537,7 +504,6 @@ export async function generateGeminiResponse(
         throw new Error("PERMISSION_ERROR: هذا المفتاح محظور من الوصول للموديل.");
       }
       
-      // Generic retry logic with exponential backoff
       if (attempt >= maxTotalAttempts) {
         if (lowerMsg.includes("quota") || lowerMsg.includes("429") || status === 429) {
           throw new Error("QUOTA_ERROR: انتهت الحصة المجانية لهذا المفتاح أو أن الخادم مزدحم حالياً. يرجى المحاولة بعد دقيقة.");
