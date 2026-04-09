@@ -511,7 +511,7 @@ export default function ToolView() {
       const maxRetries = 3;
       let success = false;
       let result = '';
-      let currentModel = config?.model || 'gemini-3-flash-preview';
+      let currentModel = config?.model || 'gemini-1.5-flash';
 
       while (retryCount <= maxRetries && !success) {
         try {

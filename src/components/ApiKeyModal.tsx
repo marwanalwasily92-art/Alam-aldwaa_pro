@@ -11,7 +11,7 @@ interface ApiKeyModalProps {
 
 export default function ApiKeyModal({ currentConfig, onSave, onClose }: ApiKeyModalProps) {
   const [apiKey, setApiKey] = useState(currentConfig?.apiKey || '');
-  const [model, setModel] = useState<UserConfig['model']>(currentConfig?.model || 'gemini-3-flash-preview');
+  const [model, setModel] = useState<UserConfig['model']>(currentConfig?.model || 'gemini-1.5-flash');
   const [incognitoMode] = useState<boolean>(currentConfig?.incognitoMode || false);
   const [isValidating, setIsValidating] = useState(false);
   const [validationResult, setValidationResult] = useState<{ valid: boolean; message: string } | null>(null);

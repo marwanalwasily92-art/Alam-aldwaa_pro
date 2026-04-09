@@ -73,7 +73,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // Set default config if none exists
       const defaultConfig: UserConfig = {
         apiKey: '',
-        model: 'gemini-3-flash-preview'
+        model: 'gemini-1.5-flash'
       };
       setConfig(defaultConfig);
       localStorage.setItem('pharma_world_config', encryptData(JSON.stringify(defaultConfig)));
