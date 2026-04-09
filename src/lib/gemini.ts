@@ -159,8 +159,8 @@ export async function validateApiKey(apiKey: string) {
 
   try {
     const ai = new GoogleGenerativeAI(trimmedKey);
-    // Use the latest 2.0 flash model for validation to avoid 404 errors with older keys
-    const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+    // Use a stable model for validation
+    const model = ai.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
     
     // Use a very simple prompt to verify the key
     const result = await model.generateContent("hi");
@@ -193,8 +193,8 @@ export async function validateApiKey(apiKey: string) {
       return { valid: false, message: "هذا المفتاح محظور أو لا يملك صلاحيات الوصول لـ Gemini API." };
     }
 
-    if (lowerMessage.includes("not found") || status === 404) {
-      return { valid: false, message: "الموديل غير متاح لهذا المفتاح. تأكد من تفعيل Gemini API في مشروعك في Google Cloud Console." };
+    if (lowerMessage.includes("not found") || status === 404 || lowerMessage.includes("not enabled")) {
+      return { valid: false, message: "الموديل غير متاح أو أن الواجهة البرمجية (API) غير مفعلة. يرجى الذهاب لـ Google Cloud Console وتفعيل 'Generative Language API' لهذا المشروع." };
     }
     
     return { 
