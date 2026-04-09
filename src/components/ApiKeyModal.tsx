@@ -169,10 +169,10 @@ export default function ApiKeyModal({ currentConfig, onSave, onClose }: ApiKeyMo
               </button>
               <button
                 type="button"
-                onClick={() => setModel('gemini-3.1-pro-preview')}
+                onClick={() => setModel('gemini-3.1-pro')}
                 disabled={isValidating}
                 className={`p-3 rounded-xl border-2 transition-all text-center ${
-                  model === 'gemini-3.1-pro-preview' 
+                  model === 'gemini-3.1-pro' 
                     ? 'border-blue-600 bg-blue-50 text-blue-700 font-bold' 
                     : 'border-slate-200 text-slate-500'
                 }`}

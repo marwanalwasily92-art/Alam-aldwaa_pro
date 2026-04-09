@@ -18,6 +18,6 @@ export interface HistoryItem {
 
 export interface UserConfig {
   apiKey: string;
-  model: 'gemini-3.0-flash' | 'gemini-3.1-pro-preview' | 'gemini-3.0-pro' | 'gemini-2.0-flash';
+  model: 'gemini-3.0-flash' | 'gemini-3.1-pro';
   incognitoMode?: boolean;
 }

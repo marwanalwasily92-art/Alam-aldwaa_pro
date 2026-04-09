@@ -308,7 +308,7 @@ export async function generateGeminiStream(
   const fullPrompt = hiddenPrefix + prompt;
   const maxTotalAttempts = 100; // Extremely stubborn retry logic (صميل)
   let attempt = 0;
-  let currentModel = getBestModel(modelRotation, modelName);
+  let currentModel = getBestModel(modelRotation, modelName === 'gemini-1.5-flash' ? 'gemini-3.0-flash' : modelName);
 
   while (attempt < maxTotalAttempts) {
     let fullText = "";
@@ -368,7 +368,7 @@ export async function generateGeminiStream(
       
       // If it's a quota/rate limit error, rotate model immediately and retry
       if (lowerMsg.includes("quota") || lowerMsg.includes("429") || lowerMsg.includes("busy") || status === 429) {
-        currentModel = getBestModel(modelRotation, modelName);
+        currentModel = getBestModel(modelRotation, modelName === 'gemini-1.5-flash' ? 'gemini-3.0-flash' : modelName);
         
         // Wait 3 to 5 seconds before retry to let the "minute" pass if we are hitting global limits
         const delay = 3000 + (Math.random() * 2000);
@@ -522,7 +522,7 @@ export async function generateGeminiResponse(
       // If it's a Quota Error, try the NEXT best model immediately
       if (lowerMsg.includes("quota") || lowerMsg.includes("429") || status === 429 || lowerMsg.includes("busy")) {
         console.warn(`Quota exceeded for ${currentModel}, rotating...`);
-        currentModel = getBestModel(modelRotation, modelName);
+        currentModel = getBestModel(modelRotation, modelName === 'gemini-1.5-flash' ? 'gemini-3.0-flash' : modelName);
         
         // Wait 3 to 5 seconds before retry to let the "minute" pass if we are hitting global limits
         await new Promise(r => setTimeout(r, 3000 + Math.random() * 2000));
