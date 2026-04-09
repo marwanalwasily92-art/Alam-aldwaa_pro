@@ -11,7 +11,7 @@ interface ApiKeyModalProps {
 
 export default function ApiKeyModal({ currentConfig, onSave, onClose }: ApiKeyModalProps) {
   const [apiKey, setApiKey] = useState(currentConfig?.apiKey || '');
-  const [model, setModel] = useState<UserConfig['model']>(currentConfig?.model || 'gemini-3.0-flash');
+  const [model, setModel] = useState<UserConfig['model']>(currentConfig?.model || 'gemini-3-flash-preview');
   const [incognitoMode] = useState<boolean>(currentConfig?.incognitoMode || false);
   const [isValidating, setIsValidating] = useState(false);
   const [validationResult, setValidationResult] = useState<{ valid: boolean; message: string } | null>(null);
@@ -156,10 +156,10 @@ export default function ApiKeyModal({ currentConfig, onSave, onClose }: ApiKeyMo
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => setModel('gemini-3.0-flash')}
+                onClick={() => setModel('gemini-3-flash-preview')}
                 disabled={isValidating}
                 className={`p-3 rounded-xl border-2 transition-all text-center ${
-                  model === 'gemini-3.0-flash' 
+                  model === 'gemini-3-flash-preview' 
                     ? 'border-blue-600 bg-blue-50 text-blue-700 font-bold' 
                     : 'border-slate-200 text-slate-500'
                 }`}
@@ -169,10 +169,10 @@ export default function ApiKeyModal({ currentConfig, onSave, onClose }: ApiKeyMo
               </button>
               <button
                 type="button"
-                onClick={() => setModel('gemini-3.1-pro')}
+                onClick={() => setModel('gemini-3.1-pro-preview')}
                 disabled={isValidating}
                 className={`p-3 rounded-xl border-2 transition-all text-center ${
-                  model === 'gemini-3.1-pro' 
+                  model === 'gemini-3.1-pro-preview' 
                     ? 'border-blue-600 bg-blue-50 text-blue-700 font-bold' 
                     : 'border-slate-200 text-slate-500'
                 }`}

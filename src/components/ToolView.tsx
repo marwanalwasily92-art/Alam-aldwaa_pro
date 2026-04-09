@@ -511,7 +511,7 @@ export default function ToolView() {
       const maxRetries = 3;
       let success = false;
       let result = '';
-      let currentModel = config?.model || 'gemini-3.0-flash';
+      let currentModel = config?.model || 'gemini-3-flash-preview';
 
       while (retryCount <= maxRetries && !success) {
         try {
@@ -536,10 +536,10 @@ export default function ToolView() {
         } catch (err: any) {
           const msg = err.message || "";
           
-          if ((msg.includes("QUOTA_ERROR") || msg.includes("quota") || msg.includes("429")) && currentModel === 'gemini-3.1-pro') {
-            currentModel = 'gemini-3.0-flash';
+          if ((msg.includes("QUOTA_ERROR") || msg.includes("quota") || msg.includes("429")) && currentModel === 'gemini-3.1-pro-preview') {
+            currentModel = 'gemini-3-flash-preview';
             if (config) {
-              saveConfig({ ...config, model: 'gemini-3.0-flash' });
+              saveConfig({ ...config, model: 'gemini-3-flash-preview' });
             }
             setLoadingMessage("انتهت حصة Pro، جاري المحاولة باستخدام Flash...");
             continue;
