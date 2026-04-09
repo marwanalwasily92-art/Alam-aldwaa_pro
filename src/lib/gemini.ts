@@ -504,7 +504,7 @@ export async function generateGeminiResponse(
   };
 
   let attempt = 0;
-  let currentModel = getBestModel(modelRotation, modelName);
+  let currentModel = getBestModel(modelRotation, modelName === 'gemini-1.5-flash' ? 'gemini-3.0-flash' : modelName);
   const maxTotalAttempts = 100; // Extremely stubborn retry logic (صميل)
 
   while (attempt < maxTotalAttempts) {
