@@ -335,10 +335,9 @@ export async function generateGeminiStream(
       });
 
       for await (const chunk of response) {
-        const chunkText = chunk.text;
-        if (chunkText) {
-          fullText += chunkText;
-          if (onChunk) onChunk(chunkText);
+        if (chunk.text) {
+          fullText += chunk.text;
+          if (onChunk) onChunk(chunk.text);
         }
       }
 
