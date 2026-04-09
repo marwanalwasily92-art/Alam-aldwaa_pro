@@ -271,8 +271,7 @@ export async function generateGeminiStream(
 
   const modelRotation = [
     'gemini-3.0-flash',            // Priority 1: High Capacity (1500+ RPM)
-    'gemini-3.1-pro-preview',      // Priority 2: Elite Intelligence (Lower RPM)
-    'gemini-3.0-pro'               // Priority 3: Professional Intelligence
+    'gemini-3.1-pro',              // Priority 2: Elite Intelligence (Lower RPM)
   ];
   
   switch (toolType) {
@@ -413,8 +412,7 @@ export async function generateGeminiResponse(
   // Model Rotation Strategy (Plan A -> B -> C)
   const modelRotation = [
     'gemini-3.0-flash',            // Priority 1: High Capacity (1500+ RPM)
-    'gemini-3.1-pro-preview',      // Priority 2: Elite Intelligence (Lower RPM)
-    'gemini-3.0-pro'               // Priority 3: Professional Intelligence
+    'gemini-3.1-pro',              // Priority 2: Elite Intelligence (Lower RPM)
   ];
   
   switch (toolType) {
