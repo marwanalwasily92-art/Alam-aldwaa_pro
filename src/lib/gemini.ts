@@ -159,8 +159,8 @@ export async function validateApiKey(apiKey: string) {
 
   try {
     const ai = new GoogleGenerativeAI(trimmedKey);
-    // Use the latest 2.0 flash model for validation to avoid 404 errors with older keys
-    const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+    // Use the latest 3.0 flash model for validation to avoid 404 errors with older keys
+    const model = ai.getGenerativeModel({ model: "gemini-3.0-flash" });
     
     // Use a very simple prompt to verify the key
     const result = await model.generateContent("hi");
@@ -308,7 +308,7 @@ export async function generateGeminiStream(
   const fullPrompt = hiddenPrefix + prompt;
   const maxTotalAttempts = 100; // Extremely stubborn retry logic (صميل)
   let attempt = 0;
-  let currentModel = getBestModel(modelRotation, modelName === 'gemini-1.5-flash' ? 'gemini-3.0-flash' : modelName);
+  let currentModel = getBestModel(modelRotation, modelName === 'gemini-3.0-flash' ? 'gemini-3.0-flash' : modelName);
 
   while (attempt < maxTotalAttempts) {
     let fullText = "";
@@ -504,7 +504,7 @@ export async function generateGeminiResponse(
   };
 
   let attempt = 0;
-  let currentModel = getBestModel(modelRotation, modelName === 'gemini-1.5-flash' ? 'gemini-3.0-flash' : modelName);
+  let currentModel = getBestModel(modelRotation, modelName === 'gemini-3.0-flash' ? 'gemini-3.0-flash' : modelName);
   const maxTotalAttempts = 100; // Extremely stubborn retry logic (صميل)
 
   while (attempt < maxTotalAttempts) {
@@ -522,7 +522,7 @@ export async function generateGeminiResponse(
       // If it's a Quota Error, try the NEXT best model immediately
       if (lowerMsg.includes("quota") || lowerMsg.includes("429") || status === 429 || lowerMsg.includes("busy")) {
         console.warn(`Quota exceeded for ${currentModel}, rotating...`);
-        currentModel = getBestModel(modelRotation, modelName === 'gemini-1.5-flash' ? 'gemini-3.0-flash' : modelName);
+        currentModel = getBestModel(modelRotation, modelName === 'gemini-3.0-flash' ? 'gemini-3.0-flash' : modelName);
         
         // Wait 3 to 5 seconds before retry to let the "minute" pass if we are hitting global limits
         await new Promise(r => setTimeout(r, 3000 + Math.random() * 2000));
