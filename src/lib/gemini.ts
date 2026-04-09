@@ -266,8 +266,7 @@ export async function generateGeminiStream(
   let systemInstruction = CONSULTATION_INSTRUCTION;
 
   const modelRotation = [
-    'gemini-3-flash-preview',      // Priority 1: High Capacity
-    'gemini-3.1-pro-preview',      // Priority 2: Elite Intelligence
+    'gemini-3-flash-preview',
   ];
   
   switch (toolType) {
@@ -302,7 +301,7 @@ export async function generateGeminiStream(
   }
 
   const fullPrompt = hiddenPrefix + prompt;
-  const maxTotalAttempts = 100;
+  const maxTotalAttempts = 5;
   let attempt = 0;
   let currentModel = getBestModel(modelRotation, modelName === 'gemini-1.5-flash' ? 'gemini-3-flash-preview' : modelName);
 
@@ -316,7 +315,25 @@ export async function generateGeminiStream(
           temperature: 0.1,
           topK: 32,
           topP: 0.8,
-        }
+        },
+        safetySettings: [
+          {
+            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+            threshold: HarmBlockThreshold.BLOCK_NONE,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+            threshold: HarmBlockThreshold.BLOCK_NONE,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+            threshold: HarmBlockThreshold.BLOCK_NONE,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+            threshold: HarmBlockThreshold.BLOCK_NONE,
+          },
+        ],
       });
 
       if (imageData) {
@@ -401,8 +418,7 @@ export async function generateGeminiResponse(
   let systemInstruction = CONSULTATION_INSTRUCTION;
 
   const modelRotation = [
-    'gemini-3-flash-preview',      // Priority 1: High Capacity
-    'gemini-3.1-pro-preview',      // Priority 2: Elite Intelligence
+    'gemini-3-flash-preview',
   ];
   
   switch (toolType) {
@@ -446,7 +462,25 @@ export async function generateGeminiResponse(
         temperature: 0.1,
         topK: 32,
         topP: 0.8,
-      }
+      },
+      safetySettings: [
+        {
+          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
+        },
+      ],
     });
 
     if (imageData) {
@@ -495,7 +529,7 @@ export async function generateGeminiResponse(
 
   let attempt = 0;
   let currentModel = getBestModel(modelRotation, modelName === 'gemini-1.5-flash' ? 'gemini-3-flash-preview' : modelName);
-  const maxTotalAttempts = 100;
+  const maxTotalAttempts = 5;
 
   while (attempt < maxTotalAttempts) {
     try {
