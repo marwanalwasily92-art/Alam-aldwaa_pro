@@ -10,7 +10,7 @@ import { PullToRefresh } from './PullToRefresh';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { config, setShowApiKeyModal } = useConfig();
+  const { config } = useConfig();
 
   const handleSelectTool = (toolId: ToolType) => {
     navigate(`/tool/${toolId}`);

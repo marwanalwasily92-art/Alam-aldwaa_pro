@@ -6,8 +6,6 @@ import { encryptData, decryptData } from '../lib/encryption';
 interface ConfigContextType {
   config: UserConfig | null;
   saveConfig: (config: UserConfig) => void;
-  showApiKeyModal: boolean;
-  setShowApiKeyModal: (show: boolean) => void;
   showInstructionsModal: boolean;
   setShowInstructionsModal: (show: boolean) => void;
 }
@@ -15,8 +13,6 @@ interface ConfigContextType {
 const ConfigContext = createContext<ConfigContextType>({
   config: null,
   saveConfig: () => {},
-  showApiKeyModal: false,
-  setShowApiKeyModal: () => {},
   showInstructionsModal: false,
   setShowInstructionsModal: () => {},
 });
@@ -27,18 +23,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [config, setConfig] = useState<UserConfig | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const showApiKeyModal = searchParams.get('modal') === 'apiKey';
   const showInstructionsModal = searchParams.get('modal') === 'instructions';
-
-  const setShowApiKeyModal = (show: boolean) => {
-    const newParams = new URLSearchParams(searchParams);
-    if (show) {
-      newParams.set('modal', 'apiKey');
-    } else {
-      newParams.delete('modal');
-    }
-    setSearchParams(newParams);
-  };
 
   const setShowInstructionsModal = (show: boolean) => {
     const newParams = new URLSearchParams(searchParams);
@@ -83,15 +68,12 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const saveConfig = (newConfig: UserConfig) => {
     setConfig(newConfig);
     localStorage.setItem('pharma_world_config', encryptData(JSON.stringify(newConfig)));
-    setShowApiKeyModal(false);
   };
 
   return (
     <ConfigContext.Provider value={{
       config,
       saveConfig,
-      showApiKeyModal,
-      setShowApiKeyModal,
       showInstructionsModal,
       setShowInstructionsModal
     }}>

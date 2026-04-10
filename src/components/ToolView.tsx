@@ -24,13 +24,12 @@ export default function ToolView() {
   const { toolId } = useParams<{ toolId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { config, saveConfig, setShowApiKeyModal } = useConfig();
+  const { config, saveConfig } = useConfig();
 
   const tool = toolId as ToolType;
   const userId = user?.uid || 'anonymous';
 
   const onBack = () => navigate(-1);
-  const onOpenSettings = () => setShowApiKeyModal(true);
   const onSelectTool = (t: ToolType) => navigate(`/tool/${t}`);
   const [input, setInput] = useState('');
   const [drugs, setDrugs] = useState<Drug[]>([]);

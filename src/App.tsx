@@ -6,7 +6,6 @@ import Dashboard from './components/Dashboard';
 import ToolView from './components/ToolView';
 import HistoryVault from './components/HistoryVault';
 import AdminDashboard from './components/AdminDashboard';
-import ApiKeyModal from './components/ApiKeyModal';
 import InstructionsModal from './components/InstructionsModal';
 import MedicalDisclaimerModal from './components/MedicalDisclaimerModal';
 import { History, LayoutDashboard, Key, ShieldCheck, HelpCircle, WifiOff, UserCircle, AlertTriangle, Coins, Clock, Info, ChevronLeft } from 'lucide-react';
@@ -285,7 +284,7 @@ function QuotaDisplay({ userId, isAdmin, variant = 'header' }: { userId: string;
 
 function AppContent() {
   const { user, loading, error: authError } = useAuth();
-  const { config, saveConfig, showApiKeyModal, setShowApiKeyModal, showInstructionsModal, setShowInstructionsModal } = useConfig();
+  const { config, saveConfig, showInstructionsModal, setShowInstructionsModal } = useConfig();
   const [showDisclaimer, setShowDisclaimer] = React.useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const isOnline = useNetworkStatus();
@@ -356,15 +355,6 @@ function AppContent() {
 
           {/* Left Side: Actions */}
           <div className="flex items-center gap-2">
-            <button 
-              onClick={() => setShowApiKeyModal(true)}
-              className={cn(
-                "p-2 rounded-xl transition-all bg-white/10 hover:bg-white/20 backdrop-blur-sm",
-                config?.apiKey ? "text-green-300" : "text-amber-300"
-              )}
-            >
-              <Key className="w-5 h-5" />
-            </button>
             <QuotaDisplay userId={user.uid} isAdmin={isAdmin} />
             
             <button 
@@ -440,14 +430,6 @@ function AppContent() {
         )}
       </nav>
 
-      {showApiKeyModal && (
-        <ApiKeyModal 
-          currentConfig={config} 
-          onSave={saveConfig} 
-          onClose={() => setShowApiKeyModal(false)} 
-        />
-      )}
-
       <AnimatePresence>
         {showInstructionsModal && (
           <InstructionsModal onClose={() => setShowInstructionsModal(false)} />
@@ -502,22 +484,6 @@ function AppContent() {
                     <div className="flex items-center gap-2 font-bold text-sm text-blue-600">
                       <HelpCircle className="w-4 h-4" />
                       <span>المساعدة</span>
-                    </div>
-                  </button>
-
-                  <button 
-                    onClick={() => {
-                      setShowProfileModal(false);
-                      setShowApiKeyModal(true);
-                    }}
-                    className="w-full bg-slate-50 hover:bg-slate-100 rounded-2xl p-4 flex items-center justify-between transition-colors"
-                  >
-                    <div className={cn(
-                      "flex items-center gap-2 font-bold text-sm",
-                      config?.apiKey ? "text-green-600" : "text-amber-600"
-                    )}>
-                      <Key className="w-4 h-4" />
-                      <span>{config?.apiKey ? 'مفتاح الـ API مفعل' : 'مفتاح الـ API غير مفعل'}</span>
                     </div>
                   </button>
                 </div>
