@@ -536,12 +536,13 @@ export default function ToolView() {
         } catch (err: any) {
           const msg = err.message || "";
           
-          if ((msg.includes("QUOTA_ERROR") || msg.includes("quota") || msg.includes("429")) && currentModel === 'gemini-3.1-pro-preview') {
-            currentModel = 'gemini-3-flash-preview';
+          if ((msg.includes("QUOTA_ERROR") || msg.includes("quota") || msg.includes("429") || msg.includes("MODEL_NOT_FOUND") || msg.includes("not found") || msg.includes("404")) && currentModel !== 'gemini-3-flash-preview') {
+            const nextModel = 'gemini-3-flash-preview';
+            currentModel = nextModel;
             if (config) {
-              saveConfig({ ...config, model: 'gemini-3-flash-preview' });
+              saveConfig({ ...config, model: nextModel });
             }
-            setLoadingMessage("انتهت حصة Pro، جاري المحاولة باستخدام Flash...");
+            setLoadingMessage(`جاري المحاولة باستخدام موديل Flash 3.0...`);
             continue;
           }
 

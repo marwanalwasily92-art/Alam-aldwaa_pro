@@ -150,10 +150,10 @@ export default function ApiKeyModal({ currentConfig, onSave, onClose }: ApiKeyMo
               </div>
             )}
           </div>
-
+          
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700 block">نوع المحرك (الموديل)</label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => setModel('gemini-3-flash-preview')}
@@ -178,7 +178,7 @@ export default function ApiKeyModal({ currentConfig, onSave, onClose }: ApiKeyMo
                 }`}
               >
                 Gemini 3.1 Pro
-                <span className="block text-[10px] font-normal opacity-70">دقة عالية جداً للخطوط الصعبة</span>
+                <span className="block text-[10px] font-normal opacity-70">دقة عالية جداً</span>
               </button>
             </div>
           </div>

@@ -205,6 +205,15 @@ const modelHealth: Record<string, { lastFailure: number; failureCount: number }>
 
 function getBestModel(rotation: string[], preferredModel: string): string {
   const now = Date.now();
+  
+  // If preferred model is in rotation and healthy, use it immediately
+  if (rotation.includes(preferredModel)) {
+    const health = modelHealth[preferredModel];
+    if (!health || (now - health.lastFailure > 30000)) {
+      return preferredModel;
+    }
+  }
+
   const availableModels: { model: string, weight: number }[] = [];
 
   for (const model of rotation) {
@@ -303,7 +312,7 @@ export async function generateGeminiStream(
   const fullPrompt = hiddenPrefix + prompt;
   const maxTotalAttempts = 5;
   let attempt = 0;
-  let currentModel = getBestModel(modelRotation, modelName === 'gemini-1.5-flash' ? 'gemini-3-flash-preview' : modelName);
+  let currentModel = getBestModel(modelRotation, modelName);
 
   while (attempt < maxTotalAttempts) {
     let fullText = "";
@@ -380,7 +389,7 @@ export async function generateGeminiStream(
       attempt++;
       
       if (lowerMsg.includes("quota") || lowerMsg.includes("429") || lowerMsg.includes("busy") || status === 429) {
-        currentModel = getBestModel(modelRotation, modelName === 'gemini-1.5-flash' ? 'gemini-3-flash-preview' : modelName);
+        currentModel = getBestModel(modelRotation, modelName);
         const delay = 3000 + (Math.random() * 2000);
         await new Promise(r => setTimeout(r, delay));
         continue;
@@ -528,7 +537,7 @@ export async function generateGeminiResponse(
   };
 
   let attempt = 0;
-  let currentModel = getBestModel(modelRotation, modelName === 'gemini-1.5-flash' ? 'gemini-3-flash-preview' : modelName);
+  let currentModel = getBestModel(modelRotation, modelName);
   const maxTotalAttempts = 5;
 
   while (attempt < maxTotalAttempts) {
@@ -544,7 +553,7 @@ export async function generateGeminiResponse(
 
       if (lowerMsg.includes("quota") || lowerMsg.includes("429") || status === 429 || lowerMsg.includes("busy")) {
         console.warn(`Quota exceeded for ${currentModel}, rotating...`);
-        currentModel = getBestModel(modelRotation, modelName === 'gemini-1.5-flash' ? 'gemini-3-flash-preview' : modelName);
+        currentModel = getBestModel(modelRotation, modelName);
         await new Promise(r => setTimeout(r, 3000 + Math.random() * 2000));
         continue;
       }
