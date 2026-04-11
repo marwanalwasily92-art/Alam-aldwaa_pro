@@ -9,6 +9,7 @@ import { storage, db, getDeviceId, checkAndIncrementQuota, deleteImageFromStorag
 import { doc, onSnapshot } from 'firebase/firestore';
 import { ref, uploadString } from 'firebase/storage';
 import { saveToLocalHistory } from '../lib/localHistory';
+import { generatePDF } from '../lib/pdf';
 import imageCompression from 'browser-image-compression';
 import { TOOLS } from '../constants';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -577,15 +578,15 @@ export default function ToolView() {
       console.error(err);
       const msg = err.message || "";
       if (msg.includes("API_KEY_INVALID") || msg.includes("invalid API key")) {
-        setError("مفتاح API غير صالح. يرجى التأكد من صحة المفتاح في الإعدادات.");
+        setError("عذراً، يوجد خلل في مفتاح التشغيل الخاص بالنظام. يرجى إبلاغ الإدارة.");
       } else if (msg.includes("QUOTA_ERROR")) {
-        setError("لقد بلغت حد الاستخدام المجاني اليومي لهذا المفتاح. جرب مفتاحاً آخر.");
+        setError("عذراً، جميع المحركات (الأساسية والاحتياطية) مشغولة حالياً أو استنفذت الحصة اليومية. يرجى المحاولة بعد قليل.");
       } else if (msg.includes("PERMISSION_ERROR")) {
-        setError("هذا المفتاح محظور أو لا يملك صلاحيات كافية. تأكد من إعدادات المشروع في Google AI Studio.");
+        setError("عذراً، يوجد حظر مؤقت على النظام. يرجى المحاولة لاحقاً.");
       } else if (msg.includes("MODEL_NOT_FOUND")) {
-        setError("الموديل المختار غير متاح لهذا المفتاح. تأكد من تفعيل Gemini API في مشروعك في Google Cloud Console.");
+        setError("الموديل المختار غير متاح حالياً. يرجى المحاولة لاحقاً.");
       } else if (msg.includes("quota") || msg.includes("429")) {
-        setError("عذراً، الخادم المجاني العام مزدحم حالياً بسبب ضغط الاستخدام. يرجى المحاولة مرة أخرى بعد قليل.");
+        setError("عذراً، جميع المحركات (الأساسية والاحتياطية) مشغولة حالياً أو استنفذت الحصة اليومية. يرجى المحاولة بعد قليل.");
       } else {
         setError(msg || 'حدث خطأ أثناء الاتصال بالمحرك. تأكد من اتصال الإنترنت.');
       }
@@ -677,9 +678,14 @@ export default function ToolView() {
     }
   };
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     if (!response) return;
-    window.print();
+    try {
+      await generatePDF('pdf-content-wrapper', `تحليل_${currentTool.title}.pdf`);
+    } catch (error) {
+      console.error("PDF generation failed:", error);
+      alert("عذراً، حدث خطأ أثناء إنشاء ملف PDF. يرجى المحاولة مرة أخرى.");
+    }
   };
 
   return (

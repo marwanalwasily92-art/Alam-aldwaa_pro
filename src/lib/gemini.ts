@@ -5,6 +5,12 @@ import { generateOpenRouterResponse } from "./openrouter";
 
 const BASE_INSTRUCTION = `أنت المحرك الذكي الأكثر تطوراً لتطبيق (عالم الدواء). أنت خبير صيدلاني وطبي يمني بمستوى "استشاري أول" (Elite Senior Consultant). 
 
+قواعد صارمة لجميع نماذج الذكاء الاصطناعي (Universal Constraints):
+1. التزم بتنسيق Markdown حصراً.
+2. لا تكتب أي مقدمات أو ترحيب أو خاتمة (مثل "مرحباً"، "إليك التحليل"، "أتمنى لك الشفاء"). ابدأ بالتحليل مباشرة.
+3. التزم بهيكل الجداول المطلوبة حرفياً ولا تضف أعمدة من عندك.
+4. أجب باللغة العربية الفصحى الواضحة والمهنية.
+
 قاعدة الرفض المطلق (مهم جداً): إذا كان المحتوى المرفق (صورة أو نص) لا يخص الطب أو الصيدلة نهائياً (مثل: صورة منظر طبيعي، صورة شخصية، لقطة شاشة لبرنامج، صورة حيوان، إلخ)، يجب عليك الرد فقط بعبارة: "عذراً، أنا خبيرك في عالم الدواء فقط" مع ذكر السبب باختصار شديد. 
 تنبيه هام حول الصور: تجاهل أي عناصر في الخلفية (مثل طاولة، يد تمسك الورقة، أو أشياء محيطة). طالما أن الصورة تحتوي على محتوى طبي أو صيدلاني (روشتة، دواء، تقرير)، قم بتحليل المحتوى الطبي وتجاهل الخلفية تماماً ولا ترفض الصورة.
 
@@ -325,17 +331,6 @@ export async function generateGeminiStream(
       
       attempt++;
       
-      if (lowerMsg.includes("quota") || lowerMsg.includes("429") || lowerMsg.includes("busy") || status === 429) {
-        currentModel = getBestModel(modelRotation, modelName);
-        const delay = 3000 + (Math.random() * 2000);
-        await new Promise(r => setTimeout(r, delay));
-        continue;
-      }
-      
-      if (lowerMsg.includes("api_key_invalid") || lowerMsg.includes("invalid api key")) {
-        throw new Error("API_KEY_ERROR: مفتاح API غير صحيح.");
-      }
-      
       if (attempt >= maxTotalAttempts) {
         if (lowerMsg.includes("quota") || lowerMsg.includes("429") || lowerMsg.includes("busy") || status === 429 || lowerMsg.includes("unavailable") || status === 503 || status === 500) {
           console.warn("Gemini Stream failed completely, falling back to OpenRouter...");
@@ -348,6 +343,18 @@ export async function generateGeminiStream(
         }
         throw error;
       }
+
+      if (lowerMsg.includes("quota") || lowerMsg.includes("429") || lowerMsg.includes("busy") || status === 429) {
+        currentModel = getBestModel(modelRotation, modelName);
+        const delay = 3000 + (Math.random() * 2000);
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+      
+      if (lowerMsg.includes("api_key_invalid") || lowerMsg.includes("invalid api key")) {
+        throw new Error("API_KEY_ERROR: مفتاح API غير صحيح.");
+      }
+      
       await new Promise(r => setTimeout(r, Math.pow(2, attempt % 5) * 1000));
     }
   }
@@ -498,20 +505,6 @@ export async function generateGeminiResponse(
       
       attempt++;
 
-      if (lowerMsg.includes("quota") || lowerMsg.includes("429") || status === 429 || lowerMsg.includes("busy")) {
-        console.warn(`Quota exceeded for ${currentModel}, rotating...`);
-        currentModel = getBestModel(modelRotation, modelName);
-        await new Promise(r => setTimeout(r, 3000 + Math.random() * 2000));
-        continue;
-      }
-      
-      if (lowerMsg.includes("api_key_invalid") || lowerMsg.includes("invalid api key") || status === 401) {
-        throw new Error("API_KEY_ERROR: مفتاح API الذي تستخدمه غير صحيح أو تم إيقافه.");
-      }
-      if (lowerMsg.includes("blocked") || lowerMsg.includes("permission") || status === 403) {
-        throw new Error("PERMISSION_ERROR: هذا المفتاح محظور من الوصول للموديل.");
-      }
-      
       if (attempt >= maxTotalAttempts) {
         if (lowerMsg.includes("quota") || lowerMsg.includes("429") || status === 429 || lowerMsg.includes("busy") || lowerMsg.includes("unavailable") || status === 503 || status === 500) {
           console.warn("Gemini failed completely, falling back to OpenRouter...");
@@ -526,6 +519,20 @@ export async function generateGeminiResponse(
           throw new Error("يبدو أن اتصال الإنترنت لديك ضعيف أو غير مستقر. يرجى المحاولة مرة أخرى.");
         }
         throw new Error(msg || "حدث خطأ غير متوقع.");
+      }
+
+      if (lowerMsg.includes("quota") || lowerMsg.includes("429") || status === 429 || lowerMsg.includes("busy")) {
+        console.warn(`Quota exceeded for ${currentModel}, rotating...`);
+        currentModel = getBestModel(modelRotation, modelName);
+        await new Promise(r => setTimeout(r, 3000 + Math.random() * 2000));
+        continue;
+      }
+      
+      if (lowerMsg.includes("api_key_invalid") || lowerMsg.includes("invalid api key") || status === 401) {
+        throw new Error("API_KEY_ERROR: مفتاح API الذي تستخدمه غير صحيح أو تم إيقافه.");
+      }
+      if (lowerMsg.includes("blocked") || lowerMsg.includes("permission") || status === 403) {
+        throw new Error("PERMISSION_ERROR: هذا المفتاح محظور من الوصول للموديل.");
       }
       
       const delay = Math.pow(2, attempt % 4) * 1000 + Math.random() * 1000;

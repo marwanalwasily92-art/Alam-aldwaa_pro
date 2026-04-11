@@ -52,7 +52,7 @@ const ResultDisplay = forwardRef<HTMLDivElement, ResultDisplayProps>(({
       animate={{ opacity: 1, y: 0 }}
       className="space-y-4"
     >
-      <div ref={ref} className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 relative overflow-hidden">
+      <div id="pdf-content-wrapper" ref={ref} className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-1 h-full bg-blue-600"></div>
         <div className={`prose prose-slate max-w-none prose-hr:my-10 ${tool === 'radiology' ? 'space-y-6' : 'space-y-10'}`}>
           <ReactMarkdown 

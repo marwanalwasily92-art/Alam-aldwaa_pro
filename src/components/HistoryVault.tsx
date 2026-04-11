@@ -10,6 +10,7 @@ import { TOOLS } from '../constants';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getLocalHistory, deleteFromLocalHistory, performGlobalCleanup } from '../lib/localHistory';
+import { generatePDF } from '../lib/pdf';
 
 export default function HistoryVault() {
   const navigate = useNavigate();
@@ -134,8 +135,15 @@ export default function HistoryVault() {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    if (!selectedItem) return;
+    try {
+      const toolTitle = TOOLS.find(t => t.id === selectedItem.tool_type)?.title || 'تحليل';
+      await generatePDF('history-detail-content', `سجل_${toolTitle}.pdf`);
+    } catch (error) {
+      console.error("PDF generation failed:", error);
+      alert("عذراً، حدث خطأ أثناء إنشاء ملف PDF. يرجى المحاولة مرة أخرى.");
+    }
   };
 
   const filteredItems = items.filter(item => {
@@ -185,6 +193,7 @@ export default function HistoryVault() {
       <AnimatePresence mode="wait">
         {selectedItem ? (
           <motion.div 
+            id="history-detail-content"
             key="detail"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
