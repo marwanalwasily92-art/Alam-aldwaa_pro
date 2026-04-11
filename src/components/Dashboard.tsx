@@ -7,6 +7,7 @@ import { useConfig } from '../contexts/ConfigContext';
 import { ToolCover } from './ToolCover';
 import { ChevronLeft, ArrowLeft } from 'lucide-react';
 import { PullToRefresh } from './PullToRefresh';
+import { AdPlaceholder } from './AdPlaceholder';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -77,6 +78,9 @@ export default function Dashboard() {
           </div>
         </motion.button>
       )}
+
+      {/* Fixed Ad Space - Dashboard */}
+      <AdPlaceholder id="Banner_Android" className="mt-4" />
     </div>
     </PullToRefresh>
   );

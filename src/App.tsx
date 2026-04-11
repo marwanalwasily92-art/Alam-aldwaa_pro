@@ -7,7 +7,7 @@ import ToolView from './components/ToolView';
 import HistoryVault from './components/HistoryVault';
 import AdminDashboard from './components/AdminDashboard';
 import MedicalDisclaimerModal from './components/MedicalDisclaimerModal';
-import { History, LayoutDashboard, Key, ShieldCheck, WifiOff, UserCircle, AlertTriangle, Coins, Clock, Info, ChevronLeft } from 'lucide-react';
+import { History, LayoutDashboard, Key, ShieldCheck, WifiOff, UserCircle, AlertTriangle, Coins, Clock, Info, ChevronLeft, Mail, MapPin, Phone } from 'lucide-react';
 import { cn } from './lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useNetworkStatus } from './hooks/useNetworkStatus';
@@ -407,10 +407,10 @@ function AppContent() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-[32px] w-full max-w-sm overflow-hidden shadow-2xl border border-slate-100"
+              className="bg-white rounded-[32px] w-[95%] max-w-sm max-h-[90dvh] overflow-y-auto shadow-2xl border border-slate-100 scrollbar-hide"
             >
               {/* Header */}
-              <div className="flex items-center justify-between p-6 border-b border-slate-50">
+              <div className="flex items-center justify-between p-4 border-b border-slate-50">
                 <div className="w-6"></div>
                 <h2 className="text-slate-900 font-bold text-lg">إعدادات الحساب</h2>
                 <button 
@@ -422,12 +422,12 @@ function AppContent() {
               </div>
 
               {/* Profile Info */}
-              <div className="p-8 flex flex-col items-center">
-                <div className="w-24 h-24 rounded-full bg-blue-600 text-white flex items-center justify-center text-4xl font-bold mb-4 shadow-xl overflow-hidden border-4 border-white">
-                  <UserCircle className="w-16 h-16 text-blue-100" />
+              <div className="p-4 flex flex-col items-center">
+                <div className="w-20 h-20 rounded-full bg-blue-600 text-white flex items-center justify-center text-4xl font-bold mb-2 shadow-xl overflow-hidden border-4 border-white">
+                  <UserCircle className="w-14 h-14 text-blue-100" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-1">مستخدم زائر</h3>
-                <p className="text-slate-500 text-xs mb-8 text-center px-4">
+                <h3 className="text-lg font-bold text-slate-900 mb-1">مستخدم زائر</h3>
+                <p className="text-slate-500 text-[10px] mb-4 text-center px-4">
                   بياناتك محفوظة محلياً على هذا الجهاز لمدة ساعة واحدة فقط لضمان خصوصيتك.
                 </p>
 
@@ -436,6 +436,66 @@ function AppContent() {
                   <div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between">
                     <QuotaDisplay userId={user.uid} isAdmin={isAdmin} variant="profile" />
                     <span className="text-slate-700 font-bold text-sm">الرصيد المتبقي</span>
+                  </div>
+                </div>
+
+                {/* Sponsorship Section */}
+                <div className="w-full bg-gradient-to-br from-blue-50 to-indigo-50 rounded-[24px] p-5 border border-blue-100/50 shadow-sm mb-2">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2 py-0.5 bg-blue-600 text-white text-[8px] font-black rounded-full uppercase tracking-wider">برعاية</span>
+                      <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                        <RedCrescentIcon className="w-5 h-5 text-red-600" />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h4 className="text-sm font-black text-blue-900 mb-1">مخزن عالم الدواء</h4>
+                      <p className="text-[10px] text-slate-600 font-bold leading-relaxed">
+                        لبيع الأدوية والمستلزمات الطبية <br/>
+                        <span className="text-blue-600">(جملة وتجزئة)</span>
+                      </p>
+                    </div>
+
+                    <div className="space-y-2 mt-1">
+                      <div className="flex items-center gap-2 text-slate-500">
+                        <MapPin className="w-3 h-3 text-blue-400" />
+                        <span className="text-[9px] font-medium">إب - بعدان - سوق نادب</span>
+                      </div>
+                      <motion.a 
+                        whileHover={{ x: -2 }}
+                        href="tel:+967777814591"
+                        className="flex items-center gap-2 text-blue-700 bg-white/50 py-1.5 px-3 rounded-xl border border-blue-100/50 w-fit"
+                      >
+                        <Phone className="w-3 h-3" />
+                        <span className="text-[10px] font-black" dir="ltr">+967 777 814 591</span>
+                      </motion.a>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Developer Signature Section */}
+                <div className="w-full mt-2 pt-4 border-t border-slate-100">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="flex flex-col items-center">
+                      <span className="text-[10px] text-slate-400 font-bold mb-1">تم التطوير بواسطة</span>
+                      <h4 className="text-sm font-black text-blue-900">م/ مروان الواصلي</h4>
+                      <p className="text-[9px] text-slate-500 font-medium">مطور حلول برمجية وذكاء اصطناعي</p>
+                    </div>
+                    
+                    <motion.a 
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      href="mailto:marwanalwasily97@gmail.com"
+                      className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-bold shadow-lg shadow-slate-200 hover:bg-slate-800 transition-colors"
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      تواصل مع المهندس
+                    </motion.a>
+                    
+                    <div className="text-[8px] text-slate-300 font-medium mt-2">
+                      إصدار التطبيق v2.1.0
+                    </div>
                   </div>
                 </div>
               </div>

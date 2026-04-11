@@ -20,6 +20,7 @@ import ImageCropperModal from './tool/ImageCropperModal';
 import ToolInputForm from './tool/ToolInputForm';
 import ToolResponse from './tool/ToolResponse';
 import PermissionModal from './PermissionModal';
+import { AdPlaceholder } from './AdPlaceholder';
 
 export default function ToolView() {
   const { toolId } = useParams<{ toolId: string }>();
@@ -782,6 +783,10 @@ export default function ToolView() {
               }}
             />
           </div>
+
+          {/* Fixed Ad Space - Analysis Results */}
+          <AdPlaceholder id="Banner_Android" className="mt-2" />
+
           {/* Privacy Disclaimer */}
           <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-start gap-3">
             <ShieldCheck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
