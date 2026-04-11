@@ -17,7 +17,6 @@ export interface HistoryItem {
 }
 
 export interface UserConfig {
-  apiKey: string;
   model: 'gemini-3-flash-preview';
   incognitoMode?: boolean;
 }

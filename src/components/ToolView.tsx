@@ -51,7 +51,6 @@ export default function ToolView() {
   useEffect(() => {
     const fetchQuota = async () => {
       if (!userId) return;
-      const hasCustomKey = !!config?.apiKey;
       // We use a "check" without incrementing to get the current state
       // But checkAndIncrementQuota increments. We need a read-only version.
       // Actually, we can just listen to the device_usage doc directly like in App.tsx
@@ -71,40 +70,22 @@ export default function ToolView() {
           day: '2-digit'
         }).format(new Date());
         
-        const hasCustomKey = !!config?.apiKey;
         const usage = data.last_reset_date === today ? (data.usage_count || 0) : 0;
         const anonymousLimit = data.anonymous_limit || 5;
         const hasLimitSet = data.anonymous_limit_set && data.last_reset_date === today;
 
-        // We need stats for the true maxQuota
-        statsUnsub = onSnapshot(doc(db, 'system_stats', 'daily'), (statsSnap) => {
-          const statsData = statsSnap.exists() ? statsSnap.data() : null;
-          const privateUserCount = statsData?.private_user_count || 0;
-          const lastResetDate = statsData?.last_reset_date || '';
-          
-          let maxQuota = 5;
-          if (hasCustomKey) {
-            maxQuota = (lastResetDate === today && privateUserCount >= 400) ? 5 : 10;
-          }
-
-          if (hasCustomKey) {
-            setQuotaRemaining(Math.max(0, maxQuota - usage));
-          } else {
-            const limit = hasLimitSet ? anonymousLimit : 5;
-            const remaining = Math.max(0, limit - usage);
-            setQuotaRemaining(remaining);
-          }
-        });
+        const limit = hasLimitSet ? anonymousLimit : 5;
+        const remaining = Math.max(0, limit - usage);
+        setQuotaRemaining(remaining);
       } else {
-        setQuotaRemaining(config?.apiKey ? 10 : 5);
+        setQuotaRemaining(5);
       }
     });
 
     return () => {
       deviceUnsub();
-      if (statsUnsub) statsUnsub();
     };
-  }, [userId, config?.apiKey]);
+  }, [userId]);
 
   // Mecca Time Countdown
   useEffect(() => {
@@ -490,14 +471,11 @@ export default function ToolView() {
       }
 
       // 2. Check and Increment Quota (only if cache miss)
-      const hasCustomKey = !!config?.apiKey;
-      const quota = await checkAndIncrementQuota(userId, hasCustomKey);
+      const quota = await checkAndIncrementQuota(userId, false);
       
       if (!quota.allowed) {
         setLoading(false);
-        if (!hasCustomKey && quota.maxQuota === 5) {
-          setError('لقد استهلكت حصتك المجانية السريعة (5 طلبات). هل تعلم أنه يمكنك الحصول على 10 طلبات يومياً إذا أضفت مفتاح Gemini الخاص بك؟');
-        } else if (quota.maxQuota === 0) {
+        if (quota.maxQuota === 0) {
           setError('عذراً، استنفدت الخدمة حصتها المجانية العامة لهذا اليوم لدعم استمرار الخدمة مجاناً لجميع الصيادلة. سيتم تجديد الحصة تلقائياً غداً.');
         } else {
           setError(`عذراً، استنفدت حصتك اليومية (${quota.maxQuota} تحليلات). سيتم تجديد الحصة تلقائياً غداً.`);
@@ -510,7 +488,7 @@ export default function ToolView() {
       const maxRetries = 3;
       let success = false;
       let result = '';
-      let currentModel = config?.model || 'gemini-3-flash-preview';
+      let currentModel = 'gemini-3-flash-preview';
 
       while (retryCount <= maxRetries && !success) {
         try {
@@ -521,7 +499,6 @@ export default function ToolView() {
 
           // 1. Start Gemini Stream
           result = await generateGeminiStream(
-            config?.apiKey || '',
             currentModel,
             tool,
             finalInput || currentTool.defaultPrompt || 'حلل هذه الصورة',
@@ -535,16 +512,6 @@ export default function ToolView() {
         } catch (err: any) {
           const msg = err.message || "";
           
-          if ((msg.includes("QUOTA_ERROR") || msg.includes("quota") || msg.includes("429") || msg.includes("MODEL_NOT_FOUND") || msg.includes("not found") || msg.includes("404")) && currentModel !== 'gemini-3-flash-preview') {
-            const nextModel = 'gemini-3-flash-preview';
-            currentModel = nextModel;
-            if (config) {
-              saveConfig({ ...config, model: nextModel });
-            }
-            setLoadingMessage(`جاري المحاولة باستخدام موديل Flash 3.0...`);
-            continue;
-          }
-
           const isNetworkError = msg.includes('Failed to fetch') || 
                                  msg.includes('NetworkError') || 
                                  msg.includes('fetch failed') ||
@@ -618,13 +585,9 @@ export default function ToolView() {
       } else if (msg.includes("MODEL_NOT_FOUND")) {
         setError("الموديل المختار غير متاح لهذا المفتاح. تأكد من تفعيل Gemini API في مشروعك في Google Cloud Console.");
       } else if (msg.includes("quota") || msg.includes("429")) {
-        if (!config?.apiKey) {
-          setError("عذراً، الخادم المجاني العام مزدحم حالياً بسبب ضغط الاستخدام. يرجى المحاولة مرة أخرى بعد قليل، أو أضف مفتاح Gemini الخاص بك من الإعدادات للحصول على حصة خاصة ومستقرة.");
-        } else {
-          setError("لقد بلغت حد الاستخدام المجاني اليومي لهذا المفتاح. سيتم تجديد الحصة تلقائياً خلال 24 ساعة.");
-        }
+        setError("عذراً، الخادم المجاني العام مزدحم حالياً بسبب ضغط الاستخدام. يرجى المحاولة مرة أخرى بعد قليل.");
       } else {
-        setError(msg || 'حدث خطأ أثناء الاتصال بالمحرك. تأكد من صحة مفتاح API واتصال الإنترنت.');
+        setError(msg || 'حدث خطأ أثناء الاتصال بالمحرك. تأكد من اتصال الإنترنت.');
       }
     }
   };
@@ -750,7 +713,7 @@ export default function ToolView() {
                     <div className="h-1 bg-slate-100 rounded-full overflow-hidden">
                       <motion.div 
                         initial={{ width: 0 }}
-                        animate={{ width: quotaRemaining !== null ? `${(quotaRemaining / (config?.apiKey ? 10 : 5)) * 100}%` : '100%' }}
+                        animate={{ width: quotaRemaining !== null ? `${(quotaRemaining / 5) * 100}%` : '100%' }}
                         className="h-full bg-gradient-to-r from-blue-500 to-indigo-500"
                       />
                     </div>
@@ -770,14 +733,6 @@ export default function ToolView() {
                 </div>
               </div>
             </div>
-            {config?.apiKey && (
-              <div className="hidden sm:flex items-center gap-2 bg-green-50 text-green-700 px-3 py-1.5 rounded-full border border-green-100">
-                <Key className="w-3.5 h-3.5" />
-                <span className="text-[10px] font-bold font-mono">
-                  {config?.apiKey.substring(0, 4)}...{config?.apiKey.substring(config.apiKey.length - 4)}
-                </span>
-              </div>
-            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -805,7 +760,6 @@ export default function ToolView() {
               loading={loading}
               loadingMessage={loadingMessage}
               error={error}
-              onOpenSettings={onOpenSettings}
               handleShare={handleShare}
               handleCopy={handleCopy}
               exportToPDF={handlePrint}
@@ -922,7 +876,6 @@ export default function ToolView() {
               loading={loading}
               loadingMessage={loadingMessage}
               error={error}
-              onOpenSettings={onOpenSettings}
               handleShare={handleShare}
               handleCopy={handleCopy}
               exportToPDF={handlePrint}

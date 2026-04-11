@@ -12,7 +12,6 @@ interface ToolResponseProps {
   loading: boolean;
   loadingMessage: string;
   error: string | null;
-  onOpenSettings?: () => void;
   handleShare: () => void;
   handleCopy: () => void;
   exportToPDF: () => void;
@@ -28,7 +27,6 @@ const ToolResponse = React.forwardRef<HTMLDivElement, ToolResponseProps>(({
   loading,
   loadingMessage,
   error,
-  onOpenSettings,
   handleShare,
   handleCopy,
   exportToPDF,
@@ -127,16 +125,6 @@ const ToolResponse = React.forwardRef<HTMLDivElement, ToolResponseProps>(({
             <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
             <p className="text-sm font-bold">{error}</p>
           </div>
-          {(error.includes("مفتاح") || error.includes("API") || error.includes("حصتك")) && onOpenSettings && (
-            <div className="flex gap-2 mr-8">
-              <button 
-                onClick={onOpenSettings}
-                className="text-xs bg-red-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-red-700 transition-colors w-fit"
-              >
-                إضافة مفتاحك الخاص
-              </button>
-            </div>
-          )}
         </motion.div>
       )}
 

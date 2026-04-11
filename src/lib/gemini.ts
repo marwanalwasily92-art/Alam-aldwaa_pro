@@ -138,69 +138,6 @@ const DRUG_ID_INSTRUCTION = `${BASE_INSTRUCTION}
 
 const BUILT_IN_API_KEY = "AIzaSyDsHLnFLUXg_0MlEyD_mt_TXwxwwtCUmIk";
 
-export async function validateApiKey(apiKey: string) {
-  // If no key is provided, we check if the built-in key exists
-  if (!apiKey) {
-    const builtInKey = (import.meta as any).env.VITE_GEMINI_API_KEY || BUILT_IN_API_KEY;
-    if (builtInKey) {
-      return { valid: true, message: "سيتم استخدام المحرك المدمج مجاناً." };
-    }
-    return { valid: false, message: "يرجى إدخال مفتاح API." };
-  }
-
-  const trimmedKey = apiKey.trim();
-
-  if (trimmedKey.length < 30) {
-    return { valid: false, message: "المفتاح قصير جداً. تأكد من نسخ المفتاح كاملاً." };
-  }
-
-  if (!trimmedKey.startsWith("AIza")) {
-    return { valid: false, message: "تنسيق المفتاح غير صحيح. يجب أن يبدأ بـ AIza." };
-  }
-
-  try {
-    const ai = new GoogleGenerativeAI(trimmedKey);
-    const model = ai.getGenerativeModel({ model: "gemini-3-flash-preview" });
-    const result = await model.generateContent("hi");
-    const response = await result.response;
-    const text = response.text();
-    
-    if (text) {
-      return { valid: true, message: "المفتاح صالح ويعمل بنجاح" };
-    }
-    
-    return { valid: false, message: "فشل التحقق: استجابة فارغة من المحرك." };
-  } catch (error: any) {
-    console.error("API Key Validation Error:", error);
-    
-    const errorMessage = error?.message || "";
-    const status = error?.status || (error?.response?.status);
-    const lowerMessage = errorMessage.toLowerCase();
-    
-    // Detailed error categorization
-    if (lowerMessage.includes("api_key_invalid") || lowerMessage.includes("invalid api key") || status === 401) {
-      return { valid: false, message: "مفتاح API غير صحيح. تأكد من نسخه من Google AI Studio." };
-    }
-    
-    if (lowerMessage.includes("quota") || lowerMessage.includes("429") || status === 429) {
-      return { valid: false, message: "انتهت الحصة المجانية لهذا المفتاح اليوم." };
-    }
-
-    if (lowerMessage.includes("blocked") || lowerMessage.includes("permission") || status === 403) {
-      return { valid: false, message: "هذا المفتاح محظور أو لا يملك صلاحيات الوصول لـ Gemini API." };
-    }
-
-    if (lowerMessage.includes("not found") || status === 404 || lowerMessage.includes("not enabled")) {
-      return { valid: false, message: "الموديل غير متاح أو أن الواجهة البرمجية (API) غير مفعلة. يرجى الذهاب لـ Google Cloud Console وتفعيل 'Generative Language API' لهذا المشروع." };
-    }
-    
-    return { 
-      valid: false, 
-      message: "فشل التحقق: " + (errorMessage.length > 100 ? errorMessage.substring(0, 100) + "..." : errorMessage) 
-    };
-  }
-}
-
 // Track model health to avoid rate-limited models temporarily
 const modelHealth: Record<string, { lastFailure: number; failureCount: number }> = {};
 
@@ -257,14 +194,13 @@ function recordSuccess(modelName: string) {
 }
 
 export async function generateGeminiStream(
-  apiKey: string,
   modelName: string,
   toolType: ToolType,
   prompt: string,
   imageData?: string,
   onChunk?: (chunk: string) => void
 ): Promise<string> {
-  const finalApiKey = apiKey?.trim() || (await getSystemApiKey()) || (import.meta as any).env.VITE_GEMINI_API_KEY || BUILT_IN_API_KEY;
+  const finalApiKey = (await getSystemApiKey()) || (import.meta as any).env.VITE_GEMINI_API_KEY || BUILT_IN_API_KEY;
   
   if (!finalApiKey) {
     throw new Error("API_KEY_MISSING: لم يتم العثور على مفتاح تشغيل. يرجى التأكد من إعدادات النظام.");
@@ -420,14 +356,13 @@ export async function generateGeminiStream(
 }
 
 export async function generateGeminiResponse(
-  apiKey: string,
   modelName: string,
   toolType: ToolType,
   prompt: string,
   imageData?: string,
   maxRetries = 5
 ): Promise<string> {
-  const finalApiKey = apiKey?.trim() || (await getSystemApiKey()) || (import.meta as any).env.VITE_GEMINI_API_KEY || BUILT_IN_API_KEY;
+  const finalApiKey = (await getSystemApiKey()) || (import.meta as any).env.VITE_GEMINI_API_KEY || BUILT_IN_API_KEY;
   
   if (!finalApiKey) {
     throw new Error("API_KEY_MISSING: لم يتم العثور على مفتاح تشغيل. يرجى التأكد من إعدادات النظام.");
@@ -581,7 +516,7 @@ export async function generateGeminiResponse(
         if (lowerMsg.includes("quota") || lowerMsg.includes("429") || status === 429 || lowerMsg.includes("busy") || lowerMsg.includes("unavailable") || status === 503 || status === 500) {
           console.warn("Gemini failed completely, falling back to OpenRouter...");
           try {
-            return await generateOpenRouterResponse(systemInstruction, prompt, imageData, onChunk);
+            return await generateOpenRouterResponse(systemInstruction, prompt, imageData);
           } catch (openRouterError: any) {
             console.error("OpenRouter fallback also failed:", openRouterError);
             throw new Error("QUOTA_ERROR: جميع المحركات مشغولة حالياً أو استنفذت الحصة. يرجى المحاولة بعد قليل.");

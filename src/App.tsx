@@ -6,9 +6,8 @@ import Dashboard from './components/Dashboard';
 import ToolView from './components/ToolView';
 import HistoryVault from './components/HistoryVault';
 import AdminDashboard from './components/AdminDashboard';
-import InstructionsModal from './components/InstructionsModal';
 import MedicalDisclaimerModal from './components/MedicalDisclaimerModal';
-import { History, LayoutDashboard, Key, ShieldCheck, HelpCircle, WifiOff, UserCircle, AlertTriangle, Coins, Clock, Info, ChevronLeft } from 'lucide-react';
+import { History, LayoutDashboard, Key, ShieldCheck, WifiOff, UserCircle, AlertTriangle, Coins, Clock, Info, ChevronLeft } from 'lucide-react';
 import { cn } from './lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useNetworkStatus } from './hooks/useNetworkStatus';
@@ -151,71 +150,39 @@ function QuotaDisplay({ userId, isAdmin, variant = 'header' }: { userId: string;
     }).format(new Date());
 
     const deviceId = getDeviceId();
-    const hasCustomKey = !!config?.apiKey;
     let deviceUnsub: (() => void) | undefined;
 
-    // Listen to global stats for dynamic quota
-    const statsUnsub = onSnapshot(doc(db, 'system_stats', 'daily'), (snap) => {
-      const statsData = snap.exists() ? snap.data() : null;
-      const privateUserCount = statsData?.private_user_count || 0;
-      const lastResetDate = statsData?.last_reset_date || '';
-      
-      // Determine Max Quota based on user type and global stats
-      let maxQuota = 5;
-      if (hasCustomKey) {
-        maxQuota = (lastResetDate === today && privateUserCount >= 400) ? 5 : 10;
+    // Listen to device stats
+    deviceUnsub = onSnapshot(doc(db, 'device_usage', deviceId), (deviceSnap) => {
+      if (deviceSnap.exists()) {
+        const deviceData = deviceSnap.data();
+        const currentUsage = deviceData.last_reset_date === today ? (deviceData.usage_count || 0) : 0;
+        const anonymousLimit = deviceData.anonymous_limit || 5;
+        const hasLimitSet = deviceData.anonymous_limit_set && deviceData.last_reset_date === today;
+        
+        // Apply the transition strategy for display
+        const limit = hasLimitSet ? anonymousLimit : 5;
+        const usageAtSwitch = hasLimitSet ? (anonymousLimit - 5) : 0;
+        const displayUsage = Math.max(0, currentUsage - usageAtSwitch);
+        
+        setQuota({ usage: displayUsage, max: 5 });
       } else {
-        maxQuota = 5;
+        setQuota({ usage: 0, max: 5 });
       }
-      
-      // Clean up previous device listener if it exists
-      if (deviceUnsub) {
-        deviceUnsub();
-      }
-
-      // Listen to device stats
-      deviceUnsub = onSnapshot(doc(db, 'device_usage', deviceId), (deviceSnap) => {
-        if (deviceSnap.exists()) {
-          const deviceData = deviceSnap.data();
-          const currentUsage = deviceData.last_reset_date === today ? (deviceData.usage_count || 0) : 0;
-          const anonymousLimit = deviceData.anonymous_limit || 5;
-          const hasLimitSet = deviceData.anonymous_limit_set && deviceData.last_reset_date === today;
-          
-          if (hasCustomKey) {
-            setQuota({ usage: currentUsage, max: maxQuota });
-          } else {
-            // Apply the transition strategy for display
-            const limit = hasLimitSet ? anonymousLimit : 5;
-            const usageAtSwitch = hasLimitSet ? (anonymousLimit - 5) : 0;
-            const displayUsage = Math.max(0, currentUsage - usageAtSwitch);
-            
-            setQuota({ usage: displayUsage, max: 5 });
-          }
-        } else {
-          setQuota({ usage: 0, max: maxQuota });
-        }
-      }, (error) => {
-        // Only log if not a permission error from logging out
-        if (error.code !== 'permission-denied') {
-          console.error("Error fetching device usage:", error);
-        }
-        setQuota({ usage: 0, max: maxQuota });
-      });
-
     }, (error) => {
+      // Only log if not a permission error from logging out
       if (error.code !== 'permission-denied') {
-        console.error("Error fetching system stats:", error);
+        console.error("Error fetching device usage:", error);
       }
-      setQuota({ usage: 0, max: 5 }); // Fallback
+      setQuota({ usage: 0, max: 5 });
     });
 
     return () => {
-      statsUnsub();
       if (deviceUnsub) {
         deviceUnsub();
       }
     };
-  }, [userId, config?.apiKey]);
+  }, [userId]);
 
   if (!quota) return null;
 
@@ -284,7 +251,7 @@ function QuotaDisplay({ userId, isAdmin, variant = 'header' }: { userId: string;
 
 function AppContent() {
   const { user, loading, error: authError } = useAuth();
-  const { config, saveConfig, showInstructionsModal, setShowInstructionsModal } = useConfig();
+  const { config, saveConfig } = useConfig();
   const [showDisclaimer, setShowDisclaimer] = React.useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const isOnline = useNetworkStatus();
@@ -431,9 +398,6 @@ function AppContent() {
       </nav>
 
       <AnimatePresence>
-        {showInstructionsModal && (
-          <InstructionsModal onClose={() => setShowInstructionsModal(false)} />
-        )}
         {showDisclaimer && (
           <MedicalDisclaimerModal onAccept={handleAcceptDisclaimer} />
         )}
@@ -473,19 +437,6 @@ function AppContent() {
                     <QuotaDisplay userId={user.uid} isAdmin={isAdmin} variant="profile" />
                     <span className="text-slate-700 font-bold text-sm">الرصيد المتبقي</span>
                   </div>
-                  
-                  <button 
-                    onClick={() => {
-                      setShowProfileModal(false);
-                      setShowInstructionsModal(true);
-                    }}
-                    className="w-full bg-slate-50 hover:bg-slate-100 rounded-2xl p-4 flex items-center justify-between transition-colors"
-                  >
-                    <div className="flex items-center gap-2 font-bold text-sm text-blue-600">
-                      <HelpCircle className="w-4 h-4" />
-                      <span>المساعدة</span>
-                    </div>
-                  </button>
                 </div>
               </div>
             </motion.div>

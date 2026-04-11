@@ -6,15 +6,11 @@ import { encryptData, decryptData } from '../lib/encryption';
 interface ConfigContextType {
   config: UserConfig | null;
   saveConfig: (config: UserConfig) => void;
-  showInstructionsModal: boolean;
-  setShowInstructionsModal: (show: boolean) => void;
 }
 
 const ConfigContext = createContext<ConfigContextType>({
   config: null,
   saveConfig: () => {},
-  showInstructionsModal: false,
-  setShowInstructionsModal: () => {},
 });
 
 export const useConfig = () => useContext(ConfigContext);
@@ -22,18 +18,6 @@ export const useConfig = () => useContext(ConfigContext);
 export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [config, setConfig] = useState<UserConfig | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
-
-  const showInstructionsModal = searchParams.get('modal') === 'instructions';
-
-  const setShowInstructionsModal = (show: boolean) => {
-    const newParams = new URLSearchParams(searchParams);
-    if (show) {
-      newParams.set('modal', 'instructions');
-    } else {
-      newParams.delete('modal');
-    }
-    setSearchParams(newParams);
-  };
 
   useEffect(() => {
     const savedConfig = localStorage.getItem('pharma_world_config');
@@ -57,7 +41,6 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } else {
       // Set default config if none exists
       const defaultConfig: UserConfig = {
-        apiKey: '',
         model: 'gemini-3-flash-preview'
       };
       setConfig(defaultConfig);
@@ -73,9 +56,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   return (
     <ConfigContext.Provider value={{
       config,
-      saveConfig,
-      showInstructionsModal,
-      setShowInstructionsModal
+      saveConfig
     }}>
       {children}
     </ConfigContext.Provider>
