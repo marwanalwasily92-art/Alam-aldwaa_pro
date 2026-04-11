@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 import { ToolType } from "../types";
 import { getSystemApiKey } from "./firebase";
+import { generateOpenRouterResponse } from "./openrouter";
 
 const BASE_INSTRUCTION = `أنت المحرك الذكي الأكثر تطوراً لتطبيق (عالم الدواء). أنت خبير صيدلاني وطبي يمني بمستوى "استشاري أول" (Elite Senior Consultant). 
 
@@ -399,7 +400,18 @@ export async function generateGeminiStream(
         throw new Error("API_KEY_ERROR: مفتاح API غير صحيح.");
       }
       
-      if (attempt >= maxTotalAttempts) throw error;
+      if (attempt >= maxTotalAttempts) {
+        if (lowerMsg.includes("quota") || lowerMsg.includes("429") || lowerMsg.includes("busy") || status === 429 || lowerMsg.includes("unavailable") || status === 503 || status === 500) {
+          console.warn("Gemini Stream failed completely, falling back to OpenRouter...");
+          try {
+            return await generateOpenRouterResponse(systemInstruction, prompt, imageData, onChunk);
+          } catch (openRouterError: any) {
+            console.error("OpenRouter fallback also failed:", openRouterError);
+            throw new Error("QUOTA_ERROR: جميع المحركات مشغولة حالياً أو استنفذت الحصة. يرجى المحاولة بعد قليل.");
+          }
+        }
+        throw error;
+      }
       await new Promise(r => setTimeout(r, Math.pow(2, attempt % 5) * 1000));
     }
   }
@@ -566,8 +578,14 @@ export async function generateGeminiResponse(
       }
       
       if (attempt >= maxTotalAttempts) {
-        if (lowerMsg.includes("quota") || lowerMsg.includes("429") || status === 429) {
-          throw new Error("QUOTA_ERROR: انتهت الحصة المجانية لهذا المفتاح أو أن الخادم مزدحم حالياً. يرجى المحاولة بعد دقيقة.");
+        if (lowerMsg.includes("quota") || lowerMsg.includes("429") || status === 429 || lowerMsg.includes("busy") || lowerMsg.includes("unavailable") || status === 503 || status === 500) {
+          console.warn("Gemini failed completely, falling back to OpenRouter...");
+          try {
+            return await generateOpenRouterResponse(systemInstruction, prompt, imageData, onChunk);
+          } catch (openRouterError: any) {
+            console.error("OpenRouter fallback also failed:", openRouterError);
+            throw new Error("QUOTA_ERROR: جميع المحركات مشغولة حالياً أو استنفذت الحصة. يرجى المحاولة بعد قليل.");
+          }
         }
         if (msg === 'NETWORK_TIMEOUT' || lowerMsg.includes('fetch') || lowerMsg.includes('network')) {
           throw new Error("يبدو أن اتصال الإنترنت لديك ضعيف أو غير مستقر. يرجى المحاولة مرة أخرى.");
