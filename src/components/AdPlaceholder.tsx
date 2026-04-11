@@ -3,9 +3,9 @@ import { motion } from 'framer-motion';
 import { ExternalLink, Phone } from 'lucide-react';
 
 interface AdPlaceholderProps {
-  id: string; // This will be your AdMob Unit ID
+  id: string; // This will be your Unity Placement ID (e.g., Banner_Android)
   className?: string;
-  type?: 'admob' | 'sponsor';
+  type?: 'admob' | 'unity' | 'sponsor';
 }
 
 declare global {
@@ -19,7 +19,7 @@ declare global {
   }
 }
 
-export const AdPlaceholder: React.FC<AdPlaceholderProps> = ({ id, className, type = 'admob' }) => {
+export const AdPlaceholder: React.FC<AdPlaceholderProps> = ({ id, className, type = 'unity' }) => {
   // --- إعدادات التفعيل لنسخة الـ APK والـ iOS ---
   // تم الربط بنجاح بمعرفات يونيتي الخاصة بك للأندرويد والآيفون
   const UNITY_IDS = {
